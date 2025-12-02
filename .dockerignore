@@ -1,4 +1,4 @@
-# Docker ignore file
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -56,14 +56,14 @@ config/app_config.json
 # Git
 .git/
 .gitignore
+.gitattributes
 
 # Docker
-Dockerfile
-docker-compose.yml
 .dockerignore
+Dockerfile.ubuntu
+Dockerfile.minimal
 
 # Documentation
-*.md
 docs/
 
 # OS
@@ -73,3 +73,8 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+
+# Test files
+tests/
+test_*.py
+*_test.py

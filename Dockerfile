@@ -1,37 +1,45 @@
 # Dockerfile for YOLO Inspection System
+# Optimized for stability and compatibility
 FROM python:3.10-slim
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
     DEBIAN_FRONTEND=noninteractive \
-    DISPLAY=:0
+    DISPLAY=:0 \
+    QT_X11_NO_MITSHM=1
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
-    # GUI dependencies
-    libgl1-mesa-glx \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Build essentials
+    gcc \
+    g++ \
+    make \
+    # Core libraries for OpenCV
+    libgl1 \
     libglib2.0-0 \
-    libsm6 \
-    libxext6 \
-    libxrender-dev \
     libgomp1 \
-    libgstreamer1.0-0 \
-    libgstreamer-plugins-base1.0-0 \
-    # PyQt5 dependencies
-    libxcb-xinerama0 \
+    # X11 core
+    libx11-6 \
+    libxext6 \
+    libxrender1 \
+    libsm6 \
+    libice6 \
+    # Qt5 essentials (PyQt5 runtime dependencies)
+    libxcb1 \
+    libxkbcommon0 \
     libxkbcommon-x11-0 \
     libdbus-1-3 \
-    libxcb-icccm4 \
-    libxcb-image0 \
-    libxcb-keysyms1 \
-    libxcb-randr0 \
-    libxcb-render-util0 \
-    libxcb-shape0 \
-    # Video device access
+    libfontconfig1 \
+    libfreetype6 \
+    # GStreamer for video
+    libgstreamer1.0-0 \
+    libgstreamer-plugins-base1.0-0 \
+    # Camera support
     v4l-utils \
     # Utilities
     wget \
     git \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
@@ -40,8 +48,9 @@ WORKDIR /app
 # Copy requirements first for better caching
 COPY requirements.txt .
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Upgrade pip and install Python dependencies
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .
@@ -55,9 +64,6 @@ RUN mkdir -p /app/data \
 
 # Set permissions
 RUN chmod +x /app/main.py
-
-# Expose any ports if needed (for web interface in future)
-# EXPOSE 8080
 
 # Default command
 CMD ["python", "main.py"]
