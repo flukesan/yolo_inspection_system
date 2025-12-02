@@ -2,9 +2,9 @@
 Camera View Widget - แสดงภาพจากกล้อง
 Display camera feed and inspection results
 """
-from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout
-from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QImage, QPixmap
+from PyQt6.QtWidgets import QWidget, QLabel, QVBoxLayout
+from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtGui import QImage, QPixmap
 import cv2
 import numpy as np
 
@@ -32,7 +32,7 @@ class CameraView(QWidget):
 
         # Image label
         self.image_label = QLabel()
-        self.image_label.setAlignment(Qt.AlignCenter)
+        self.image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.image_label.setStyleSheet("background-color: #2b2b2b; border: 1px solid #444;")
         self.image_label.setMinimumSize(640, 480)
         self.image_label.setScaledContents(False)

@@ -8,8 +8,8 @@ Version: 1.0
 """
 import sys
 import os
-from PyQt5.QtWidgets import QApplication
-from PyQt5.QtCore import Qt
+from PyQt6.QtWidgets import QApplication
+from PyQt6.QtCore import Qt
 
 # Add project root to Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -165,7 +165,7 @@ def main():
     window.show()
 
     # Run application
-    exit_code = app.exec_()
+    exit_code = app.exec()
 
     # Cleanup
     controller.cleanup()

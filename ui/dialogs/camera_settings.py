@@ -2,10 +2,10 @@
 Camera Settings Dialog - ตั้งค่ากล้อง
 Dialog for camera configuration
 """
-from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
+from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
                              QLineEdit, QSpinBox, QComboBox, QPushButton,
                              QGroupBox, QFormLayout)
-from PyQt5.QtCore import Qt
+from PyQt6.QtCore import Qt
 
 
 class CameraSettingsDialog(QDialog):

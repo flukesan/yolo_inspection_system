@@ -17,17 +17,17 @@ def main():
     print(f"  Executable: {sys.executable}")
     print()
 
-    # Try to import PyQt5
+    # Try to import PyQt6
     print("[2] PyQt5 Import Test:")
     try:
-        import PyQt5
+        import PyQt6
         print("  ✓ PyQt5 imported successfully")
         print(f"  Location: {PyQt5.__file__}")
         print(f"  Version: {PyQt5.QtCore.PYQT_VERSION_STR}")
         print()
 
         # Qt version
-        from PyQt5 import QtCore
+        from PyQt6 import QtCore
         print("[3] Qt Information:")
         print(f"  Qt Version: {QtCore.QT_VERSION_STR}")
         print(f"  PyQt Version: {PyQt5.QtCore.PYQT_VERSION_STR}")
@@ -63,7 +63,7 @@ def main():
         # Try to create QApplication
         print("[5] QApplication Test:")
         try:
-            from PyQt5.QtWidgets import QApplication
+            from PyQt6.QtWidgets import QApplication
             app = QApplication(sys.argv)
             print("  ✓ QApplication created successfully")
             print()
@@ -81,7 +81,7 @@ def main():
             print("=" * 70)
 
     except ImportError as e:
-        print(f"  ✗ Failed to import PyQt5: {e}")
+        print(f"  ✗ Failed to import PyQt6: {e}")
         print()
         print("=" * 70)
         print("  RESULT: PyQt5 is NOT installed!")

@@ -2,10 +2,10 @@
 Model Settings Dialog - ตั้งค่าโมเดล YOLO
 Dialog for YOLO model configuration
 """
-from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
+from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
                              QLineEdit, QDoubleSpinBox, QComboBox, QPushButton,
                              QGroupBox, QFormLayout, QFileDialog)
-from PyQt5.QtCore import Qt
+from PyQt6.QtCore import Qt
 
 
 class ModelSettingsDialog(QDialog):

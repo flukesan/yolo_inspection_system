@@ -2,11 +2,11 @@
 Main Window - หน้าต่างหลัก
 Main application window for YOLO Inspection System
 """
-from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QMenuBar, QAction, QFileDialog, QMessageBox,
                              QStatusBar, QLabel)
-from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QIcon
+from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtGui import QIcon
 
 from .widgets.camera_view import CameraView
 from .widgets.control_panel import ControlPanel

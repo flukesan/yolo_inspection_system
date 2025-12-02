@@ -2,10 +2,10 @@
 Report Dialog - สร้างรายงาน
 Dialog for generating reports
 """
-from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
+from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
                              QComboBox, QPushButton, QGroupBox, QFormLayout,
                              QDateEdit, QMessageBox)
-from PyQt5.QtCore import Qt, QDate
+from PyQt6.QtCore import Qt, QDate
 
 
 class ReportDialog(QDialog):

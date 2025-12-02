@@ -19,10 +19,10 @@ def convert_file(file_path):
         (r'from PyQt5\.QtWidgets import', 'from PyQt6.QtWidgets import'),
         (r'from PyQt5\.QtCore import', 'from PyQt6.QtCore import'),
         (r'from PyQt5\.QtGui import', 'from PyQt6.QtGui import'),
-        (r'from PyQt5 import QtWidgets', 'from PyQt6 import QtWidgets'),
-        (r'from PyQt5 import QtCore', 'from PyQt6 import QtCore'),
-        (r'from PyQt5 import QtGui', 'from PyQt6 import QtGui'),
-        (r'import PyQt5', 'import PyQt6'),
+        (r'from PyQt6 import QtWidgets', 'from PyQt6 import QtWidgets'),
+        (r'from PyQt6 import QtCore', 'from PyQt6 import QtCore'),
+        (r'from PyQt6 import QtGui', 'from PyQt6 import QtGui'),
+        (r'import PyQt6', 'import PyQt6'),
     ]
 
     for pattern, replacement in replacements:

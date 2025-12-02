@@ -2,10 +2,10 @@
 Statistics Panel Widget - แสดงสถิติ
 Display inspection statistics and metrics
 """
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
+from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QGroupBox, QTableWidget, QTableWidgetItem)
-from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QFont
+from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtGui import QFont
 
 
 class StatisticsPanel(QWidget):
@@ -82,7 +82,7 @@ class StatisticsPanel(QWidget):
 
         value_label = QLabel(value)
         value_label.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {color};")
-        value_label.setAlignment(Qt.AlignRight)
+        value_label.setAlignment(Qt.AlignmentFlag.AlignRight)
 
         layout.addWidget(title_label)
         layout.addWidget(value_label)
@@ -133,7 +133,7 @@ class StatisticsPanel(QWidget):
                 # Count
                 count_item = QTableWidgetItem(str(count))
                 count_item.setFlags(Qt.ItemIsEnabled)
-                count_item.setTextAlignment(Qt.AlignCenter)
+                count_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
 
                 self.defect_table.setItem(i, 0, class_item)
                 self.defect_table.setItem(i, 1, count_item)
