@@ -1,5 +1,5 @@
-# Dockerfile for YOLO Inspection System
-# Optimized for stability and compatibility
+# Dockerfile for YOLO Inspection System - Optimized
+# Fixed: sqlite3-python issue + smaller image size
 FROM python:3.10-slim
 
 # Set environment variables
@@ -24,7 +24,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxrender1 \
     libsm6 \
     libice6 \
-    # Qt5 essentials (PyQt5 runtime dependencies)
+    # Qt5 essentials
     libxcb1 \
     libxkbcommon0 \
     libxkbcommon-x11-0 \
@@ -45,12 +45,28 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Set working directory
 WORKDIR /app
 
-# Copy requirements first for better caching
+# Copy requirements
 COPY requirements.txt .
 
-# Upgrade pip and install Python dependencies
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+# Install Python dependencies
+# Note: sqlite3 is built-in with Python, no need to install
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir \
+    ultralytics>=8.0.0 \
+    opencv-python-headless>=4.8.0 \
+    torch>=2.0.0 \
+    torchvision>=0.15.0 \
+    numpy>=1.24.0 \
+    pillow>=10.0.0 \
+    PyQt5>=5.15.0 \
+    pyqtgraph>=0.13.0 \
+    pymodbus>=3.5.0 \
+    requests>=2.31.0 \
+    pandas>=2.0.0 \
+    openpyxl>=3.1.0 \
+    matplotlib>=3.7.0 \
+    python-dateutil>=2.8.0 \
+    pyyaml>=6.0.0
 
 # Copy application code
 COPY . .

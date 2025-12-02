@@ -13,7 +13,7 @@ PyQt5>=5.15.0
 pyqtgraph>=0.13.0
 
 # Database
-sqlite3-python>=1.0.0
+# sqlite3 is built-in with Python, no need to install
 
 # Communication
 pymodbus>=3.5.0  # PLC Communication
