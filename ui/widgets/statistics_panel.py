@@ -87,8 +87,10 @@ class StatisticsPanel(QWidget):
         layout.addWidget(title_label)
         layout.addWidget(value_label)
 
-        # Store value label for updating
-        setattr(self, f"_{title}_value", value_label)
+        # Store value label in dictionary for updating
+        if not hasattr(self, '_value_labels'):
+            self._value_labels = {}
+        self._value_labels[title] = value_label
 
         return layout
 
@@ -104,12 +106,13 @@ class StatisticsPanel(QWidget):
         try:
             stats = self.inspection_engine.get_statistics()
 
-            # Update overall statistics
-            self._ตรวจสอบทั้งหมด:_value.setText(str(stats['total_inspections']))
-            self._ผ่าน (OK):_value.setText(str(stats['total_ok']))
-            self._ไม่ผ่าน (NG):_value.setText(str(stats['total_defects']))
-            self._อัตราของเสีย:_value.setText(f"{stats['defect_rate']:.2f}%")
-            self._ความเร็ว:_value.setText(f"{stats['throughput_per_min']:.1f} ชิ้น/นาที")
+            # Update overall statistics using dictionary
+            if hasattr(self, '_value_labels'):
+                self._value_labels["ตรวจสอบทั้งหมด:"].setText(str(stats['total_inspections']))
+                self._value_labels["ผ่าน (OK):"].setText(str(stats['total_ok']))
+                self._value_labels["ไม่ผ่าน (NG):"].setText(str(stats['total_defects']))
+                self._value_labels["อัตราของเสีย:"].setText(f"{stats['defect_rate']:.2f}%")
+                self._value_labels["ความเร็ว:"].setText(f"{stats['throughput_per_min']:.1f} ชิ้น/นาที")
 
             # Update defect table
             self.update_defect_table(stats['defect_counts'])
@@ -140,9 +143,10 @@ class StatisticsPanel(QWidget):
 
     def reset(self):
         """รีเซ็ตสถิติ"""
-        self._ตรวจสอบทั้งหมด:_value.setText("0")
-        self._ผ่าน (OK):_value.setText("0")
-        self._ไม่ผ่าน (NG):_value.setText("0")
-        self._อัตราของเสีย:_value.setText("0.00%")
-        self._ความเร็ว:_value.setText("0 ชิ้น/นาที")
+        if hasattr(self, '_value_labels'):
+            self._value_labels["ตรวจสอบทั้งหมด:"].setText("0")
+            self._value_labels["ผ่าน (OK):"].setText("0")
+            self._value_labels["ไม่ผ่าน (NG):"].setText("0")
+            self._value_labels["อัตราของเสีย:"].setText("0.00%")
+            self._value_labels["ความเร็ว:"].setText("0 ชิ้น/นาที")
         self.defect_table.setRowCount(0)
