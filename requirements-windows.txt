@@ -1,0 +1,29 @@
+# YOLO Inspection System - Windows Requirements
+# Optimized for Windows 10/11
+
+# Deep Learning & Computer Vision
+ultralytics>=8.0.0
+opencv-python>=4.8.0
+torch>=2.0.0
+torchvision>=0.15.0
+numpy>=1.24.0
+pillow>=10.0.0
+
+# GUI - Fixed versions for Windows stability
+PyQt5==5.15.9
+PyQt5-Qt5==5.15.2
+PyQt5-sip==12.11.0
+pyqtgraph>=0.13.0
+
+# Communication
+pymodbus>=3.5.0
+requests>=2.31.0
+
+# Data Processing & Reporting
+pandas>=2.0.0
+openpyxl>=3.1.0
+matplotlib>=3.7.0
+
+# Utilities
+python-dateutil>=2.8.0
+pyyaml>=6.0.0
