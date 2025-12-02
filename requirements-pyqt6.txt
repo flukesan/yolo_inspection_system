@@ -1,0 +1,27 @@
+# Requirements for PyQt6 Version
+# ใช้ PyQt6 แทน PyQt5 (ติดตั้งง่ายกว่าบน Windows)
+
+# Deep Learning & Computer Vision
+ultralytics>=8.0.0
+opencv-python>=4.8.0
+torch>=2.0.0
+torchvision>=0.15.0
+numpy>=1.24.0
+pillow>=10.0.0
+
+# GUI - PyQt6 (ไม่ต้อง Build Tools!)
+PyQt6>=6.5.0
+pyqtgraph>=0.13.0
+
+# Communication
+pymodbus>=3.5.0
+requests>=2.31.0
+
+# Data Processing & Reporting
+pandas>=2.0.0
+openpyxl>=3.1.0
+matplotlib>=3.7.0
+
+# Utilities
+python-dateutil>=2.8.0
+pyyaml>=6.0.0
