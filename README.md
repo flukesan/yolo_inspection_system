@@ -98,6 +98,141 @@ python -c "from ultralytics import YOLO; YOLO('yolov8n.pt')"
 
 แก้ไขไฟล์ `config/app_config.json` (จะถูกสร้างอัตโนมัติเมื่อรันครั้งแรก)
 
+---
+
+## 🐳 การใช้งานกับ Docker
+
+### ความต้องการ
+
+- Docker 20.10+
+- Docker Compose 1.29+
+- (Optional) NVIDIA Docker สำหรับ GPU
+
+### วิธีที่ 1: ใช้ Scripts (แนะนำ)
+
+#### รันด้วย CPU
+
+```bash
+# Build image
+./scripts/build_docker.sh
+
+# Run container
+./scripts/run_docker.sh
+```
+
+#### รันด้วย GPU
+
+```bash
+# ติดตั้ง NVIDIA Docker runtime ก่อน
+# https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html
+
+# Run container with GPU
+./scripts/run_docker_gpu.sh
+```
+
+#### หยุดการทำงาน
+
+```bash
+./scripts/stop_docker.sh
+```
+
+### วิธีที่ 2: ใช้ Docker Compose โดยตรง
+
+#### รันปกติ (CPU)
+
+```bash
+# Allow X11 forwarding
+xhost +local:docker
+
+# Build and run
+docker-compose up --build yolo-inspection
+
+# เมื่อเสร็จให้ยกเลิก X11 permission
+xhost -local:docker
+```
+
+#### รันแบบ GPU
+
+```bash
+xhost +local:docker
+docker-compose --profile gpu up --build yolo-inspection-gpu
+xhost -local:docker
+```
+
+#### รันแบบ Headless (ไม่มี GUI)
+
+```bash
+docker-compose --profile headless up --build yolo-inspection-headless
+```
+
+### วิธีที่ 3: ใช้ Docker โดยตรง
+
+```bash
+# Build image
+docker build -t yolo-inspection:latest .
+
+# Run container
+xhost +local:docker
+docker run -it --rm \
+  -e DISPLAY=$DISPLAY \
+  -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
+  -v $(pwd)/config:/app/config \
+  -v $(pwd)/data:/app/data \
+  -v $(pwd)/models:/app/models \
+  -v $(pwd)/reports:/app/reports \
+  --device=/dev/video0:/dev/video0 \
+  --network host \
+  --privileged \
+  yolo-inspection:latest
+
+xhost -local:docker
+```
+
+### การใช้ Camera ใน Docker
+
+Docker container สามารถเข้าถึงกล้อง USB ผ่าน device mapping:
+
+```yaml
+devices:
+  - /dev/video0:/dev/video0  # กล้องตัวแรก
+  - /dev/video1:/dev/video1  # กล้องตัวที่สอง
+```
+
+ตรวจสอบกล้องที่มี:
+```bash
+ls /dev/video*
+```
+
+### การใช้ RTSP Camera
+
+สำหรับ RTSP camera ไม่ต้อง mount device แค่ตั้งค่า RTSP URL ในไฟล์ config:
+
+```json
+{
+  "camera": {
+    "default_source": "rtsp://admin:password@192.168.1.100:554/stream"
+  }
+}
+```
+
+### ข้อควรระวัง
+
+1. **X11 Permission**: ต้อง run `xhost +local:docker` ก่อนเพื่อให้ container เข้าถึง X server
+2. **Camera Access**: ต้องใช้ `--privileged` หรือ mount `/dev/video*` อย่างถูกต้อง
+3. **GPU**: ต้องติดตั้ง NVIDIA Docker runtime สำหรับใช้ GPU
+4. **Network**: ใช้ `network_mode: "host"` เพื่อให้เข้าถึง PLC/RTSP camera ได้ง่าย
+
+### Volumes
+
+Data ที่สำคัญถูก mount เป็น volumes:
+- `./config` → การตั้งค่า
+- `./data` → ฐานข้อมูล
+- `./models` → โมเดล YOLO
+- `./reports` → รายงาน
+- `./logs` → Log files
+
+---
+
 ## การใช้งาน
 
 ### รันโปรแกรม

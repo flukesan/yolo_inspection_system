@@ -1,0 +1,116 @@
+# Docker Compose for YOLO Inspection System
+version: '3.8'
+
+services:
+  yolo-inspection:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: yolo_inspection_system
+
+    # Enable GUI (X11 forwarding)
+    environment:
+      - DISPLAY=${DISPLAY}
+      - QT_X11_NO_MITSHM=1
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+
+    # Mount X11 socket for GUI
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ./config:/app/config
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./reports:/app/reports
+      - ./logs:/app/logs
+
+    # Access to camera devices
+    devices:
+      - /dev/video0:/dev/video0
+      - /dev/video1:/dev/video1
+
+    # Network mode for easier device access
+    network_mode: "host"
+
+    # Privileged mode for camera access
+    privileged: true
+
+    # Runtime for NVIDIA GPU (if available)
+    # Uncomment if using NVIDIA GPU
+    # runtime: nvidia
+
+    stdin_open: true
+    tty: true
+
+    restart: unless-stopped
+
+# Optional: separate service for GPU version
+  yolo-inspection-gpu:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: yolo_inspection_system_gpu
+
+    environment:
+      - DISPLAY=${DISPLAY}
+      - QT_X11_NO_MITSHM=1
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ./config:/app/config
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./reports:/app/reports
+      - ./logs:/app/logs
+
+    devices:
+      - /dev/video0:/dev/video0
+      - /dev/video1:/dev/video1
+
+    network_mode: "host"
+    privileged: true
+
+    # NVIDIA GPU runtime
+    runtime: nvidia
+
+    stdin_open: true
+    tty: true
+
+    restart: unless-stopped
+
+    profiles:
+      - gpu
+
+# Optional: Headless version (without GUI)
+  yolo-inspection-headless:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: yolo_inspection_headless
+
+    environment:
+      - QT_QPA_PLATFORM=offscreen
+
+    volumes:
+      - ./config:/app/config
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./reports:/app/reports
+      - ./logs:/app/logs
+
+    devices:
+      - /dev/video0:/dev/video0
+      - /dev/video1:/dev/video1
+
+    network_mode: "host"
+    privileged: true
+
+    stdin_open: true
+    tty: true
+
+    restart: unless-stopped
+
+    profiles:
+      - headless
