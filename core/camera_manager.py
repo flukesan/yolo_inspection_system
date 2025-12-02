@@ -1,0 +1,196 @@
+"""
+Camera Manager - จัดการกล้อง USB/RTSP
+Manages camera connections and frame capture
+"""
+import cv2
+import threading
+import time
+from typing import Optional, Tuple, Dict, Any
+import numpy as np
+
+
+class CameraManager:
+    """จัดการการเชื่อมต่อและการอ่านภาพจากกล้อง"""
+
+    def __init__(self):
+        """Initialize Camera Manager"""
+        self.cap: Optional[cv2.VideoCapture] = None
+        self.is_running = False
+        self.current_frame: Optional[np.ndarray] = None
+        self.frame_lock = threading.Lock()
+        self.capture_thread: Optional[threading.Thread] = None
+        self.source = None
+        self.camera_info = {}
+
+        # Statistics
+        self.frame_count = 0
+        self.fps = 0
+        self.last_fps_time = time.time()
+        self.fps_frame_count = 0
+
+    def connect(self, source: Any, width: int = 1280, height: int = 720,
+                fps: int = 30, **kwargs) -> bool:
+        """
+        เชื่อมต่อกล้อง
+
+        Args:
+            source: Camera source (0, 1, ... for USB or RTSP URL)
+            width: Frame width
+            height: Frame height
+            fps: Target FPS
+            **kwargs: Additional camera parameters
+
+        Returns:
+            True if successful
+        """
+        try:
+            # Disconnect existing camera
+            self.disconnect()
+
+            # Try to open camera
+            print(f"กำลังเชื่อมต่อกล้อง: {source}")
+            self.cap = cv2.VideoCapture(source)
+
+            if not self.cap.isOpened():
+                print(f"✗ ไม่สามารถเชื่อมต่อกล้อง: {source}")
+                return False
+
+            # Set camera properties
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+            self.cap.set(cv2.CAP_PROP_FPS, fps)
+
+            # Set additional parameters
+            if 'exposure' in kwargs and kwargs['exposure'] > 0:
+                self.cap.set(cv2.CAP_PROP_EXPOSURE, kwargs['exposure'])
+            if 'gain' in kwargs and kwargs['gain'] > 0:
+                self.cap.set(cv2.CAP_PROP_GAIN, kwargs['gain'])
+            if 'buffer_size' in kwargs:
+                self.cap.set(cv2.CAP_PROP_BUFFERSIZE, kwargs['buffer_size'])
+
+            # Get actual properties
+            actual_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            actual_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            actual_fps = int(self.cap.get(cv2.CAP_PROP_FPS))
+
+            self.source = source
+            self.camera_info = {
+                'source': source,
+                'width': actual_width,
+                'height': actual_height,
+                'fps': actual_fps
+            }
+
+            print(f"✓ เชื่อมต่อกล้องสำเร็จ: {actual_width}x{actual_height} @ {actual_fps}fps")
+
+            # Start capture thread
+            self.is_running = True
+            self.capture_thread = threading.Thread(target=self._capture_loop, daemon=True)
+            self.capture_thread.start()
+
+            return True
+
+        except Exception as e:
+            print(f"✗ Error connecting camera: {e}")
+            return False
+
+    def disconnect(self) -> None:
+        """ตัดการเชื่อมต่อกล้อง"""
+        self.is_running = False
+
+        if self.capture_thread is not None:
+            self.capture_thread.join(timeout=2.0)
+            self.capture_thread = None
+
+        if self.cap is not None:
+            self.cap.release()
+            self.cap = None
+
+        self.current_frame = None
+        print("✓ ตัดการเชื่อมต่อกล้อง")
+
+    def _capture_loop(self) -> None:
+        """Background thread สำหรับอ่านภาพจากกล้อง"""
+        while self.is_running and self.cap is not None:
+            try:
+                ret, frame = self.cap.read()
+
+                if ret:
+                    with self.frame_lock:
+                        self.current_frame = frame.copy()
+                        self.frame_count += 1
+
+                    # Calculate FPS
+                    self.fps_frame_count += 1
+                    current_time = time.time()
+                    elapsed = current_time - self.last_fps_time
+
+                    if elapsed >= 1.0:
+                        self.fps = self.fps_frame_count / elapsed
+                        self.fps_frame_count = 0
+                        self.last_fps_time = current_time
+
+                else:
+                    print("! ไม่สามารถอ่านภาพจากกล้อง")
+                    time.sleep(0.1)
+
+            except Exception as e:
+                print(f"✗ Error in capture loop: {e}")
+                time.sleep(0.1)
+
+    def get_frame(self) -> Optional[np.ndarray]:
+        """
+        ดึงภาพล่าสุดจากกล้อง
+
+        Returns:
+            Frame หรือ None ถ้าไม่มี
+        """
+        with self.frame_lock:
+            if self.current_frame is not None:
+                return self.current_frame.copy()
+            return None
+
+    def is_connected(self) -> bool:
+        """
+        ตรวจสอบว่ากล้องเชื่อมต่ออยู่หรือไม่
+
+        Returns:
+            True if connected
+        """
+        return self.cap is not None and self.cap.isOpened() and self.is_running
+
+    def get_info(self) -> Dict[str, Any]:
+        """
+        ดึงข้อมูลกล้อง
+
+        Returns:
+            Camera information dictionary
+        """
+        return {
+            **self.camera_info,
+            'connected': self.is_connected(),
+            'frame_count': self.frame_count,
+            'current_fps': round(self.fps, 1)
+        }
+
+    def capture_image(self, save_path: Optional[str] = None) -> Optional[np.ndarray]:
+        """
+        จับภาพนิ่ง
+
+        Args:
+            save_path: Path to save image (optional)
+
+        Returns:
+            Captured frame
+        """
+        frame = self.get_frame()
+
+        if frame is not None and save_path:
+            cv2.imwrite(save_path, frame)
+            print(f"✓ บันทึกภาพ: {save_path}")
+
+        return frame
+
+    def __del__(self):
+        """Cleanup when object is destroyed"""
+        self.disconnect()

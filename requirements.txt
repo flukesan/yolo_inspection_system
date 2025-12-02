@@ -1,0 +1,29 @@
+# YOLO Inspection System Requirements
+
+# Deep Learning & Computer Vision
+ultralytics>=8.0.0
+opencv-python>=4.8.0
+torch>=2.0.0
+torchvision>=0.15.0
+numpy>=1.24.0
+pillow>=10.0.0
+
+# GUI
+PyQt5>=5.15.0
+pyqtgraph>=0.13.0
+
+# Database
+sqlite3-python>=1.0.0
+
+# Communication
+pymodbus>=3.5.0  # PLC Communication
+requests>=2.31.0
+
+# Data Processing & Reporting
+pandas>=2.0.0
+openpyxl>=3.1.0
+matplotlib>=3.7.0
+
+# Utilities
+python-dateutil>=2.8.0
+pyyaml>=6.0.0
