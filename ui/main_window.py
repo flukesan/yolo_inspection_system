@@ -159,8 +159,16 @@ class MainWindow(QMainWindow):
             self.statistics_panel.set_inspection_engine(controller.inspection_engine)
 
     def on_connect_camera(self):
-        """จัดการการเชื่อมต่อกล้อง"""
-        if self.app_controller:
+        """จัดการการเชื่อมต่อ/ตัดการเชื่อมต่อกล้อง"""
+        if not self.app_controller:
+            return
+
+        # Check current connection state from control panel
+        if self.control_panel.camera_connected:
+            # Currently connected - disconnect
+            self.disconnect_camera()
+        else:
+            # Currently disconnected - connect
             success = self.app_controller.connect_camera()
             if success:
                 self.camera_view.start(30)
@@ -171,6 +179,23 @@ class MainWindow(QMainWindow):
                 self.alert_panel.add_success("เชื่อมต่อกล้องสำเร็จ")
             else:
                 self.alert_panel.add_error("ไม่สามารถเชื่อมต่อกล้อง")
+
+    def disconnect_camera(self):
+        """ตัดการเชื่อมต่อกล้อง"""
+        if not self.app_controller:
+            return
+
+        # Stop camera view first
+        self.camera_view.stop()
+
+        # Disconnect camera
+        success = self.app_controller.disconnect_camera()
+        if success:
+            self.control_panel.update_camera_status(False)
+            self.camera_status.setText("กล้อง: ไม่ได้เชื่อมต่อ")
+            self.alert_panel.add_info("ตัดการเชื่อมต่อกล้องแล้ว")
+        else:
+            self.alert_panel.add_error("ไม่สามารถตัดการเชื่อมต่อกล้อง")
 
     def on_load_model(self):
         """จัดการการโหลดโมเดล"""

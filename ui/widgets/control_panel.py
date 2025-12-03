@@ -24,6 +24,7 @@ class ControlPanel(QWidget):
         super().__init__(parent)
         self.is_running = False
         self.is_paused = False
+        self.camera_connected = False  # Track camera connection state
         self.setup_ui()
 
     def setup_ui(self):
@@ -35,7 +36,7 @@ class ControlPanel(QWidget):
         camera_layout = QVBoxLayout()
 
         self.connect_camera_btn = QPushButton("🎥 เชื่อมต่อกล้อง")
-        self.connect_camera_btn.clicked.connect(self.camera_connect_clicked.emit)
+        self.connect_camera_btn.clicked.connect(self._on_camera_button_clicked)
         self.connect_camera_btn.setStyleSheet("""
             QPushButton {
                 padding: 10px;
@@ -220,16 +221,49 @@ class ControlPanel(QWidget):
         self.stop_btn.setEnabled(False)
         self.stop_clicked.emit()
 
+    def _on_camera_button_clicked(self):
+        """จัดการปุ่มเชื่อมต่อ/ตัดการเชื่อมต่อกล้อง"""
+        # Emit signal - main window will handle the actual connect/disconnect
+        self.camera_connect_clicked.emit()
+
     def update_camera_status(self, connected: bool, info: str = ""):
         """อัพเดทสถานะกล้อง"""
+        self.camera_connected = connected  # Update state
+
         if connected:
             self.camera_status_label.setText(f"สถานะ: เชื่อมต่อแล้ว {info}")
             self.camera_status_label.setStyleSheet("color: #4CAF50; font-weight: bold;")
             self.connect_camera_btn.setText("🎥 ตัดการเชื่อมต่อ")
+            self.connect_camera_btn.setStyleSheet("""
+                QPushButton {
+                    padding: 10px;
+                    font-size: 14px;
+                    background-color: #f44336;
+                    color: white;
+                    border: none;
+                    border-radius: 5px;
+                }
+                QPushButton:hover {
+                    background-color: #da190b;
+                }
+            """)
         else:
             self.camera_status_label.setText("สถานะ: ไม่ได้เชื่อมต่อ")
             self.camera_status_label.setStyleSheet("color: #ff6b6b; font-weight: bold;")
             self.connect_camera_btn.setText("🎥 เชื่อมต่อกล้อง")
+            self.connect_camera_btn.setStyleSheet("""
+                QPushButton {
+                    padding: 10px;
+                    font-size: 14px;
+                    background-color: #4CAF50;
+                    color: white;
+                    border: none;
+                    border-radius: 5px;
+                }
+                QPushButton:hover {
+                    background-color: #45a049;
+                }
+            """)
 
     def update_model_status(self, loaded: bool, info: str = ""):
         """อัพเดทสถานะโมเดล"""

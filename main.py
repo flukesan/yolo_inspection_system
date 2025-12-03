@@ -109,6 +109,21 @@ class AppController:
             print(f"✗ Error connecting camera: {e}")
             return False
 
+    def disconnect_camera(self) -> bool:
+        """
+        ตัดการเชื่อมต่อกล้อง
+
+        Returns:
+            bool: True if disconnected successfully
+        """
+        try:
+            self.camera_manager.disconnect()
+            print("✓ ตัดการเชื่อมต่อกล้องสำเร็จ")
+            return True
+        except Exception as e:
+            print(f"✗ Error disconnecting camera: {e}")
+            return False
+
     def load_model(self) -> bool:
         """โหลดโมเดล YOLO"""
         try:
