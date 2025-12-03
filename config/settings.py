@@ -17,7 +17,19 @@ class Settings:
             "width": 1280,
             "height": 720,
             "fps": 30,
-            "rtsp_url": ""
+            "rtsp_url": "",
+            "default_profile": None  # Default camera profile name
+        },
+
+        # Camera Profiles (บันทึก camera settings ที่ใช้บ่อย)
+        "camera_profiles": {
+            # "Camera Name": {
+            #     "type": "usb" or "rtsp",
+            #     "source": 0 or "rtsp://...",
+            #     "width": 1280,
+            #     "height": 720,
+            #     "fps": 30
+            # }
         },
 
         # YOLO Model Settings

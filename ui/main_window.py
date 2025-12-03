@@ -12,6 +12,7 @@ from .widgets.camera_view import CameraView
 from .widgets.control_panel import ControlPanel
 from .widgets.statistics_panel import StatisticsPanel
 from .widgets.alert_panel import AlertPanel
+from .dialogs.camera_profiles_dialog import CameraProfilesDialog
 
 
 class MainWindow(QMainWindow):
@@ -94,6 +95,12 @@ class MainWindow(QMainWindow):
         connect_camera_action = QAction("เชื่อมต่อกล้อง...", self)
         connect_camera_action.triggered.connect(self.on_connect_camera)
         camera_menu.addAction(connect_camera_action)
+
+        camera_menu.addSeparator()
+
+        camera_profiles_action = QAction("📹 จัดการ Camera Profiles...", self)
+        camera_profiles_action.triggered.connect(self.on_camera_profiles)
+        camera_menu.addAction(camera_profiles_action)
 
         # Tools menu
         tools_menu = menubar.addMenu("เครื่อง&มือ")
@@ -223,6 +230,15 @@ class MainWindow(QMainWindow):
                 if hasattr(self.app_controller, 'camera_manager'):
                     fps = self.app_controller.camera_manager.fps
                     self.fps_status.setText(f"FPS: {fps:.1f}")
+
+    def on_camera_profiles(self):
+        """เปิด Camera Profiles Dialog"""
+        if self.app_controller and hasattr(self.app_controller, 'settings'):
+            dialog = CameraProfilesDialog(self.app_controller.settings, self)
+            if dialog.exec() and dialog.modified:
+                self.alert_panel.add_success("บันทึกการตั้งค่า Camera Profiles แล้ว")
+        else:
+            QMessageBox.warning(self, "ข้อผิดพลาด", "ไม่สามารถเปิด Camera Profiles ได้")
 
     def on_settings(self):
         """เปิดหน้าต่างตั้งค่า"""
