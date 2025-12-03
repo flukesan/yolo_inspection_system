@@ -84,7 +84,7 @@ class AlertPanel(QWidget):
         # Auto scroll to bottom
         if self.auto_scroll:
             cursor = self.log_text.textCursor()
-            cursor.movePosition(QTextCursor.End)
+            cursor.movePosition(QTextCursor.MoveOperation.End)
             self.log_text.setTextCursor(cursor)
 
         # Limit number of lines
