@@ -13,6 +13,7 @@ from .widgets.control_panel import ControlPanel
 from .widgets.statistics_panel import StatisticsPanel
 from .widgets.alert_panel import AlertPanel
 from .dialogs.camera_profiles_dialog import CameraProfilesDialog
+from .dialogs.model_profiles_dialog import ModelProfilesDialog
 
 
 class MainWindow(QMainWindow):
@@ -82,6 +83,10 @@ class MainWindow(QMainWindow):
         open_action = QAction("เปิดโมเดล...", self)
         open_action.triggered.connect(self.on_load_model)
         file_menu.addAction(open_action)
+
+        model_profiles_action = QAction("📦 จัดการ Model Profiles...", self)
+        model_profiles_action.triggered.connect(self.on_model_profiles)
+        file_menu.addAction(model_profiles_action)
 
         file_menu.addSeparator()
 
@@ -294,6 +299,49 @@ class MainWindow(QMainWindow):
             else:
                 self.alert_panel.add_error(f"ไม่สามารถเชื่อมต่อกล้อง '{profile['name']}'")
                 QMessageBox.warning(self, "ข้อผิดพลาด", f"ไม่สามารถเชื่อมต่อกล้อง\n\nProfile: {profile['name']}\nSource: {profile['source']}")
+        except Exception as e:
+            self.alert_panel.add_error(f"Error: {str(e)}")
+            QMessageBox.critical(self, "ข้อผิดพลาด", f"เกิดข้อผิดพลาด:\n{str(e)}")
+
+    def on_model_profiles(self):
+        """เปิด Model Profiles Dialog"""
+        if self.app_controller and hasattr(self.app_controller, 'settings'):
+            dialog = ModelProfilesDialog(self.app_controller.settings, self)
+            result = dialog.exec()
+
+            if result:
+                # Check if user clicked "Load" button
+                if dialog.selected_profile:
+                    self.load_with_profile(dialog.selected_profile)
+                elif dialog.modified:
+                    self.alert_panel.add_success("บันทึกการตั้งค่า Model Profiles แล้ว")
+        else:
+            QMessageBox.warning(self, "ข้อผิดพลาด", "ไม่สามารถเปิด Model Profiles ได้")
+
+    def load_with_profile(self, profile):
+        """โหลดโมเดลด้วย profile"""
+        if not self.app_controller:
+            return
+
+        try:
+            # Load model with profile settings
+            success = self.app_controller.load_model(
+                model_path=profile['model_path'],
+                device=profile['device'],
+                conf_threshold=profile['confidence_threshold'],
+                iou_threshold=profile['iou_threshold'],
+                img_size=profile['img_size']
+            )
+
+            if success:
+                stats = self.app_controller.yolo_detector.get_stats()
+                info_str = f"({stats['num_classes']} classes)"
+                self.control_panel.update_model_status(True, info_str)
+                self.model_status.setText(f"โมเดล: {profile['name']} {info_str}")
+                self.alert_panel.add_success(f"โหลดโมเดล '{profile['name']}' สำเร็จ")
+            else:
+                self.alert_panel.add_error(f"ไม่สามารถโหลดโมเดล '{profile['name']}'")
+                QMessageBox.warning(self, "ข้อผิดพลาด", f"ไม่สามารถโหลดโมเดล\n\nProfile: {profile['name']}\nPath: {profile['model_path']}")
         except Exception as e:
             self.alert_panel.add_error(f"Error: {str(e)}")
             QMessageBox.critical(self, "ข้อผิดพลาด", f"เกิดข้อผิดพลาด:\n{str(e)}")

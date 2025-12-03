@@ -38,7 +38,19 @@ class Settings:
             "confidence_threshold": 0.5,
             "iou_threshold": 0.45,
             "device": "cuda",  # cuda หรือ cpu
-            "img_size": 640
+            "img_size": 640,
+            "default_profile": None  # Default model profile name
+        },
+
+        # Model Profiles (บันทึก model settings สำหรับชิ้นงานต่างๆ)
+        "model_profiles": {
+            # "Profile Name": {
+            #     "model_path": "models/yolov8_defect.pt",
+            #     "device": "cpu" or "cuda",
+            #     "confidence_threshold": 0.5,
+            #     "iou_threshold": 0.45,
+            #     "img_size": 640
+            # }
         },
 
         # Inspection Settings

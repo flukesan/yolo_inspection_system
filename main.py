@@ -124,14 +124,33 @@ class AppController:
             print(f"✗ Error disconnecting camera: {e}")
             return False
 
-    def load_model(self) -> bool:
-        """โหลดโมเดล YOLO"""
+    def load_model(self, model_path=None, device=None, conf_threshold=None,
+                   iou_threshold=None, img_size=None) -> bool:
+        """
+        โหลดโมเดล YOLO
+
+        Args:
+            model_path: Path to model file. If None, use settings.
+            device: Device (cpu/cuda). If None, use settings.
+            conf_threshold: Confidence threshold. If None, use settings.
+            iou_threshold: IOU threshold. If None, use settings.
+            img_size: Image size. If None, use settings.
+
+        Returns:
+            bool: True if loaded successfully
+        """
         try:
-            model_path = self.settings.get('yolo.model_path', 'models/yolov8_defect.pt')
-            device = self.settings.get('yolo.device', 'cpu')
-            conf_threshold = self.settings.get('yolo.confidence_threshold', 0.5)
-            iou_threshold = self.settings.get('yolo.iou_threshold', 0.45)
-            img_size = self.settings.get('yolo.img_size', 640)
+            # Use provided parameters or fall back to settings
+            if model_path is None:
+                model_path = self.settings.get('yolo.model_path', 'models/yolov8_defect.pt')
+            if device is None:
+                device = self.settings.get('yolo.device', 'cpu')
+            if conf_threshold is None:
+                conf_threshold = self.settings.get('yolo.confidence_threshold', 0.5)
+            if iou_threshold is None:
+                iou_threshold = self.settings.get('yolo.iou_threshold', 0.45)
+            if img_size is None:
+                img_size = self.settings.get('yolo.img_size', 640)
 
             return self.yolo_detector.load_model(
                 model_path=model_path,
