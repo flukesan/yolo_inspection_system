@@ -128,11 +128,11 @@ class StatisticsPanel(QWidget):
             for i, (class_name, count) in enumerate(defect_counts.items()):
                 # Defect class name
                 class_item = QTableWidgetItem(class_name)
-                class_item.setFlags(Qt.ItemIsEnabled)
+                class_item.setFlags(Qt.ItemFlag.ItemIsEnabled)
 
                 # Count
                 count_item = QTableWidgetItem(str(count))
-                count_item.setFlags(Qt.ItemIsEnabled)
+                count_item.setFlags(Qt.ItemFlag.ItemIsEnabled)
                 count_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
 
                 self.defect_table.setItem(i, 0, class_item)
