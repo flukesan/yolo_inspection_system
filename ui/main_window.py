@@ -290,7 +290,7 @@ class MainWindow(QMainWindow):
                 self.alert_panel.add_success(f"Snapshot: {status_text} - ไม่พบข้อบกพร่อง")
 
             # Update statistics display
-            self.statistics_panel.update_statistics()
+            self.statistics_panel.update_display()
 
             # Update status bar
             self.statusbar.showMessage(f"Snapshot: {status_text}{defect_info}", 5000)  # Show for 5 seconds
