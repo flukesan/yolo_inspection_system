@@ -147,6 +147,7 @@ class MainWindow(QMainWindow):
         self.control_panel.start_clicked.connect(self.on_start_inspection)
         self.control_panel.stop_clicked.connect(self.on_stop_inspection)
         self.control_panel.pause_clicked.connect(self.on_pause_inspection)
+        self.control_panel.snapshot_clicked.connect(self.on_snapshot_inspection)
         self.control_panel.camera_connect_clicked.connect(self.on_connect_camera)
         self.control_panel.load_model_clicked.connect(self.on_load_model)
         self.control_panel.settings_clicked.connect(self.on_settings)
@@ -242,6 +243,65 @@ class MainWindow(QMainWindow):
             else:
                 self.app_controller.inspection_engine.pause()
                 self.alert_panel.add_warning("พักการตรวจสอบ")
+
+    def on_snapshot_inspection(self):
+        """ตรวจสอบแบบ Snapshot/Trigger (จับภาพและตรวจสอบ 1 ครั้ง)"""
+        if not self.app_controller:
+            return
+
+        # Check if camera is connected
+        if not self.app_controller.camera_manager or not self.app_controller.camera_manager.is_connected():
+            self.alert_panel.add_error("กรุณาเชื่อมต่อกล้องก่อนใช้งาน Snapshot")
+            return
+
+        # Check if model is loaded
+        if not self.app_controller.yolo_detector or not self.app_controller.yolo_detector.is_loaded():
+            self.alert_panel.add_error("กรุณาโหลดโมเดลก่อนใช้งาน Snapshot")
+            return
+
+        # Temporarily enable inspection mode (for displaying result)
+        was_running = self.app_controller.inspection_engine.is_running
+        if not was_running:
+            self.app_controller.inspection_engine.is_running = True
+
+        # Perform single inspection
+        result = self.app_controller.inspection_engine.inspect_once()
+
+        # Restore running state
+        if not was_running:
+            self.app_controller.inspection_engine.is_running = False
+
+        if result:
+            # Enable inspection mode to show annotated image
+            self.camera_view.set_inspecting(True)
+
+            # Update camera view with annotated image
+            if result['annotated_image'] is not None:
+                self.camera_view.display_result(result['annotated_image'])
+
+            # Log result with more detailed info
+            status_text = "✓ OK" if result['status'] == 'OK' else "✗ NG"
+            defect_info = ""
+            if result['status'] == 'NG':
+                defect_classes = [det['class_name'] for det in result['detections']]
+                defect_info = f" - {result['num_defects']} defect(s): {', '.join(defect_classes)}"
+                self.alert_panel.add_defect_alert(f"Snapshot: {status_text}{defect_info}")
+            else:
+                self.alert_panel.add_success(f"Snapshot: {status_text} - ไม่พบข้อบกพร่อง")
+
+            # Update statistics display
+            self.statistics_panel.update_statistics()
+
+            # Update status bar
+            self.statusbar.showMessage(f"Snapshot: {status_text}{defect_info}", 5000)  # Show for 5 seconds
+
+            # Schedule to clear inspection mode after 3 seconds
+            # (so user can see the result, then camera view returns to normal)
+            from PyQt6.QtCore import QTimer
+            QTimer.singleShot(3000, lambda: self.camera_view.set_inspecting(False))
+
+        else:
+            self.alert_panel.add_error("Snapshot: เกิดข้อผิดพลาดในการตรวจสอบ")
 
     def run_inspection(self):
         """รันการตรวจสอบ 1 รอบ"""

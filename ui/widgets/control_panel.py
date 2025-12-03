@@ -15,6 +15,7 @@ class ControlPanel(QWidget):
     start_clicked = pyqtSignal()
     stop_clicked = pyqtSignal()
     pause_clicked = pyqtSignal()
+    snapshot_clicked = pyqtSignal()  # NEW: Snapshot/Trigger inspection
     camera_connect_clicked = pyqtSignal()
     load_model_clicked = pyqtSignal()
     settings_clicked = pyqtSignal()
@@ -162,6 +163,31 @@ class ControlPanel(QWidget):
         btn_layout.addWidget(self.stop_btn)
 
         inspection_layout.addLayout(btn_layout)
+
+        # Snapshot/Trigger button (for single inspection)
+        self.snapshot_btn = QPushButton("📸 Snapshot (Trigger)")
+        self.snapshot_btn.clicked.connect(self._on_snapshot_clicked)
+        self.snapshot_btn.setStyleSheet("""
+            QPushButton {
+                padding: 12px;
+                font-size: 15px;
+                font-weight: bold;
+                background-color: #9C27B0;
+                color: white;
+                border: none;
+                border-radius: 5px;
+            }
+            QPushButton:hover {
+                background-color: #7B1FA2;
+            }
+            QPushButton:disabled {
+                background-color: #cccccc;
+                color: #666666;
+            }
+        """)
+        self.snapshot_btn.setToolTip("จับภาพและตรวจสอบ 1 ครั้ง (ไม่ต้อง Start/Stop)")
+
+        inspection_layout.addWidget(self.snapshot_btn)
         inspection_group.setLayout(inspection_layout)
 
         # Settings & Report Group
@@ -225,6 +251,10 @@ class ControlPanel(QWidget):
         """จัดการปุ่มเชื่อมต่อ/ตัดการเชื่อมต่อกล้อง"""
         # Emit signal - main window will handle the actual connect/disconnect
         self.camera_connect_clicked.emit()
+
+    def _on_snapshot_clicked(self):
+        """จัดการปุ่ม Snapshot/Trigger"""
+        self.snapshot_clicked.emit()
 
     def update_camera_status(self, connected: bool, info: str = ""):
         """อัพเดทสถานะกล้อง"""
