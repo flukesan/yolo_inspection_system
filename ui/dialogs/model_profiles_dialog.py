@@ -112,6 +112,26 @@ class ModelProfilesDialog(QDialog):
         name_layout.addWidget(self.name_edit)
         right_layout.addLayout(name_layout)
 
+        # Model type
+        type_layout = QHBoxLayout()
+        type_layout.addWidget(QLabel("ประเภทโมเดล:"))
+        self.model_type_combo = QComboBox()
+        self.model_type_combo.addItems([
+            "Object Detection (ตรวจจับวัตถุ)",
+            "Segmentation (ตัดเส้นขอบวัตถุ)",
+            "Classification (จำแนกประเภท)",
+            "Pose Estimation (ตรวจจับท่าทาง)"
+        ])
+        self.model_type_combo.currentTextChanged.connect(self.on_model_type_changed)
+        type_layout.addWidget(self.model_type_combo)
+
+        # Add help text
+        type_help = QLabel("(เลือกให้ตรงกับไฟล์โมเดล)")
+        type_help.setStyleSheet("color: #888; font-size: 10px;")
+        type_layout.addWidget(type_help)
+
+        right_layout.addLayout(type_layout)
+
         # Model path
         path_group = QGroupBox("ไฟล์โมเดล")
         path_layout = QVBoxLayout()
@@ -253,6 +273,16 @@ class ModelProfilesDialog(QDialog):
         profile_name = item.text().replace("⭐ ", "")
         self.name_edit.setText(profile_name)
 
+        # Set model type
+        model_type = profile_data.get("model_type", "detection")
+        type_map = {
+            "detection": "Object Detection (ตรวจจับวัตถุ)",
+            "segmentation": "Segmentation (ตัดเส้นขอบวัตถุ)",
+            "classification": "Classification (จำแนกประเภท)",
+            "pose": "Pose Estimation (ตรวจจับท่าทาง)"
+        }
+        self.model_type_combo.setCurrentText(type_map.get(model_type, "Object Detection (ตรวจจับวัตถุ)"))
+
         # Set model path
         self.model_path_edit.setText(profile_data.get("model_path", ""))
         self.update_file_status(profile_data.get("model_path", ""))
@@ -272,6 +302,23 @@ class ModelProfilesDialog(QDialog):
         # Update file status when path changes
         if hasattr(self, 'model_path_edit'):
             self.update_file_status(self.model_path_edit.text())
+
+    def on_model_type_changed(self, model_type_text):
+        """เมื่อเปลี่ยนประเภทโมเดล"""
+        self.on_profile_modified()
+
+        # Show info about model type
+        type_info = {
+            "Object Detection (ตรวจจับวัตถุ)": "ไฟล์: yolov8*.pt (เช่น yolov8n.pt, yolov8s.pt)",
+            "Segmentation (ตัดเส้นขอบวัตถุ)": "ไฟล์: yolov8*-seg.pt (เช่น yolov8n-seg.pt)",
+            "Classification (จำแนกประเภท)": "ไฟล์: yolov8*-cls.pt (เช่น yolov8n-cls.pt)",
+            "Pose Estimation (ตรวจจับท่าทาง)": "ไฟล์: yolov8*-pose.pt (เช่น yolov8n-pose.pt)"
+        }
+
+        info_text = type_info.get(model_type_text, "")
+        if info_text:
+            # Update model path placeholder
+            self.model_path_edit.setPlaceholderText(info_text.replace("ไฟล์: ", "models/"))
 
     def update_file_status(self, path):
         """อัพเดทสถานะไฟล์"""
@@ -305,6 +352,7 @@ class ModelProfilesDialog(QDialog):
         """เพิ่ม profile ใหม่"""
         # Clear form
         self.name_edit.clear()
+        self.model_type_combo.setCurrentText("Object Detection (ตรวจจับวัตถุ)")
         self.model_path_edit.clear()
         self.conf_spin.setValue(0.5)
         self.iou_spin.setValue(0.45)
@@ -339,8 +387,19 @@ class ModelProfilesDialog(QDialog):
             if reply == QMessageBox.StandardButton.No:
                 return
 
+        # Get model type
+        model_type_text = self.model_type_combo.currentText()
+        type_reverse_map = {
+            "Object Detection (ตรวจจับวัตถุ)": "detection",
+            "Segmentation (ตัดเส้นขอบวัตถุ)": "segmentation",
+            "Classification (จำแนกประเภท)": "classification",
+            "Pose Estimation (ตรวจจับท่าทาง)": "pose"
+        }
+        model_type = type_reverse_map.get(model_type_text, "detection")
+
         # Create profile data
         profile_data = {
+            "model_type": model_type,
             "model_path": model_path,
             "device": self.device_combo.currentText(),
             "confidence_threshold": self.conf_spin.value(),
@@ -428,6 +487,7 @@ class ModelProfilesDialog(QDialog):
         # Store selected profile data
         self.selected_profile = {
             "name": profile_name,
+            "model_type": profile_data.get("model_type", "detection"),
             "model_path": profile_data.get("model_path", ""),
             "device": profile_data.get("device", "cpu"),
             "confidence_threshold": profile_data.get("confidence_threshold", 0.5),

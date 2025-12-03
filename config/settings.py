@@ -45,6 +45,7 @@ class Settings:
         # Model Profiles (บันทึก model settings สำหรับชิ้นงานต่างๆ)
         "model_profiles": {
             # "Profile Name": {
+            #     "model_type": "detection" | "segmentation" | "classification" | "pose",
             #     "model_path": "models/yolov8_defect.pt",
             #     "device": "cpu" or "cuda",
             #     "confidence_threshold": 0.5,

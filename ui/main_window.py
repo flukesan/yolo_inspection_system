@@ -326,6 +326,7 @@ class MainWindow(QMainWindow):
         try:
             # Load model with profile settings
             success = self.app_controller.load_model(
+                model_type=profile.get('model_type', 'detection'),
                 model_path=profile['model_path'],
                 device=profile['device'],
                 conf_threshold=profile['confidence_threshold'],

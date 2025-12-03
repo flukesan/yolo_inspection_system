@@ -20,6 +20,7 @@ class YOLODetector:
         """
         self.model = None
         self.model_path = model_path
+        self.model_type = 'detection'  # detection, segmentation, classification, pose
         self.class_names = []
         self.device = 'cpu'
         self.conf_threshold = 0.5
@@ -31,13 +32,14 @@ class YOLODetector:
         self.avg_inference_time = 0
         self.inference_times = []
 
-    def load_model(self, model_path: str, device: str = 'cpu',
-                   conf_threshold: float = 0.5, iou_threshold: float = 0.45,
-                   img_size: int = 640) -> bool:
+    def load_model(self, model_type: str = 'detection', model_path: str = '',
+                   device: str = 'cpu', conf_threshold: float = 0.5,
+                   iou_threshold: float = 0.45, img_size: int = 640) -> bool:
         """
         โหลดโมเดล YOLO
 
         Args:
+            model_type: Type of model ('detection', 'segmentation', 'classification', 'pose')
             model_path: Path to model file
             device: Device to use ('cpu' or 'cuda')
             conf_threshold: Confidence threshold
@@ -49,6 +51,7 @@ class YOLODetector:
         """
         try:
             print(f"กำลังโหลดโมเดล YOLO: {model_path}")
+            print(f"  - ประเภท: {model_type}")
 
             # Try to import ultralytics
             try:
@@ -60,6 +63,7 @@ class YOLODetector:
             # Load model
             self.model = YOLO(model_path)
             self.model_path = model_path
+            self.model_type = model_type
             self.device = device
             self.conf_threshold = conf_threshold
             self.iou_threshold = iou_threshold
@@ -71,8 +75,17 @@ class YOLODetector:
             else:
                 self.class_names = []
 
+            # Determine model type from file name if not specified correctly
+            if '-seg' in model_path.lower():
+                self.model_type = 'segmentation'
+            elif '-cls' in model_path.lower():
+                self.model_type = 'classification'
+            elif '-pose' in model_path.lower():
+                self.model_type = 'pose'
+
             print(f"✓ โหลดโมเดล YOLO สำเร็จ")
             print(f"  - Device: {device}")
+            print(f"  - Type: {self.model_type}")
             print(f"  - Classes: {len(self.class_names)} ({', '.join(self.class_names)})")
             print(f"  - Confidence: {conf_threshold}")
 
@@ -84,18 +97,21 @@ class YOLODetector:
 
     def detect(self, image: np.ndarray) -> List[Dict[str, Any]]:
         """
-        ตรวจจับ object ในภาพ
+        ตรวจจับ object ในภาพ (รองรับทุกประเภทโมเดล)
 
         Args:
             image: Input image (BGR format)
 
         Returns:
             List of detections, each containing:
+                - type: Model type used
                 - class_id: Class ID
                 - class_name: Class name
                 - confidence: Detection confidence
-                - bbox: Bounding box [x1, y1, x2, y2]
-                - center: Center point (x, y)
+                - bbox: Bounding box [x1, y1, x2, y2] (สำหรับ detection, segmentation, pose)
+                - center: Center point (x, y) (สำหรับ detection, segmentation, pose)
+                - mask: Segmentation mask (สำหรับ segmentation เท่านั้น)
+                - keypoints: Pose keypoints (สำหรับ pose เท่านั้น)
         """
         if self.model is None:
             print("! โมเดลยังไม่ได้โหลด")
@@ -114,16 +130,33 @@ class YOLODetector:
                 verbose=False
             )
 
-            # Process results
+            # Process results based on model type
             detections = []
 
             if results and len(results) > 0:
                 result = results[0]
 
-                if result.boxes is not None and len(result.boxes) > 0:
+                # Classification model (ไม่มี bounding boxes)
+                if self.model_type == 'classification':
+                    if hasattr(result, 'probs') and result.probs is not None:
+                        probs = result.probs.cpu().numpy()
+                        top_class_id = int(probs.top1)
+                        top_conf = float(probs.top1conf)
+                        class_name = self.class_names[top_class_id] if top_class_id < len(self.class_names) else f"Class_{top_class_id}"
+
+                        detection = {
+                            'type': 'classification',
+                            'class_id': top_class_id,
+                            'class_name': class_name,
+                            'confidence': top_conf
+                        }
+                        detections.append(detection)
+
+                # Detection / Segmentation / Pose models (มี bounding boxes)
+                elif result.boxes is not None and len(result.boxes) > 0:
                     boxes = result.boxes.cpu().numpy()
 
-                    for box in boxes:
+                    for idx, box in enumerate(boxes):
                         # Extract box data
                         xyxy = box.xyxy[0].astype(int)  # [x1, y1, x2, y2]
                         conf = float(box.conf[0])
@@ -137,12 +170,25 @@ class YOLODetector:
                         center_y = int((xyxy[1] + xyxy[3]) / 2)
 
                         detection = {
+                            'type': self.model_type,
                             'class_id': cls_id,
                             'class_name': class_name,
                             'confidence': conf,
                             'bbox': xyxy.tolist(),
                             'center': (center_x, center_y)
                         }
+
+                        # Add segmentation mask if available
+                        if self.model_type == 'segmentation' and hasattr(result, 'masks') and result.masks is not None:
+                            masks = result.masks.cpu().numpy()
+                            if idx < len(masks.data):
+                                detection['mask'] = masks.data[idx]
+
+                        # Add pose keypoints if available
+                        if self.model_type == 'pose' and hasattr(result, 'keypoints') and result.keypoints is not None:
+                            keypoints = result.keypoints.cpu().numpy()
+                            if idx < len(keypoints.data):
+                                detection['keypoints'] = keypoints.data[idx].tolist()
 
                         detections.append(detection)
 
@@ -158,6 +204,8 @@ class YOLODetector:
 
         except Exception as e:
             print(f"✗ Error during detection: {e}")
+            import traceback
+            traceback.print_exc()
             return []
 
     def draw_detections(self, image: np.ndarray, detections: List[Dict[str, Any]],

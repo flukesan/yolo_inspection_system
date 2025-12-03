@@ -124,12 +124,13 @@ class AppController:
             print(f"✗ Error disconnecting camera: {e}")
             return False
 
-    def load_model(self, model_path=None, device=None, conf_threshold=None,
+    def load_model(self, model_type=None, model_path=None, device=None, conf_threshold=None,
                    iou_threshold=None, img_size=None) -> bool:
         """
         โหลดโมเดล YOLO
 
         Args:
+            model_type: Model type (detection/segmentation/classification/pose). If None, use 'detection'.
             model_path: Path to model file. If None, use settings.
             device: Device (cpu/cuda). If None, use settings.
             conf_threshold: Confidence threshold. If None, use settings.
@@ -141,6 +142,8 @@ class AppController:
         """
         try:
             # Use provided parameters or fall back to settings
+            if model_type is None:
+                model_type = 'detection'
             if model_path is None:
                 model_path = self.settings.get('yolo.model_path', 'models/yolov8_defect.pt')
             if device is None:
@@ -153,6 +156,7 @@ class AppController:
                 img_size = self.settings.get('yolo.img_size', 640)
 
             return self.yolo_detector.load_model(
+                model_type=model_type,
                 model_path=model_path,
                 device=device,
                 conf_threshold=conf_threshold,
