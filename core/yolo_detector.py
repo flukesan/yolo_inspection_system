@@ -211,7 +211,7 @@ class YOLODetector:
     def draw_detections(self, image: np.ndarray, detections: List[Dict[str, Any]],
                         show_conf: bool = True, show_class: bool = True) -> np.ndarray:
         """
-        วาด bounding box และ label บนภาพ
+        วาด bounding box และ label บนภาพ (รองรับทุกประเภทโมเดล)
 
         Args:
             image: Input image
@@ -234,41 +234,95 @@ class YOLODetector:
             (255, 255, 0),  # Cyan
         ]
 
-        for det in detections:
-            x1, y1, x2, y2 = det['bbox']
+        for idx, det in enumerate(detections):
             class_id = det['class_id']
             class_name = det['class_name']
             conf = det['confidence']
+            det_type = det.get('type', 'detection')
 
             # Select color
             color = colors[class_id % len(colors)]
 
-            # Draw bounding box
-            cv2.rectangle(annotated, (x1, y1), (x2, y2), color, 2)
+            # Handle Classification (no bounding box)
+            if det_type == 'classification' or 'bbox' not in det:
+                # Draw full image bounding box for classification
+                h, w = image.shape[:2]
+                border_thickness = 8
 
-            # Prepare label
-            label_parts = []
-            if show_class:
-                label_parts.append(class_name)
-            if show_conf:
-                label_parts.append(f"{conf:.2f}")
+                # Draw thick border around image
+                cv2.rectangle(annotated, (border_thickness, border_thickness),
+                            (w - border_thickness, h - border_thickness), color, border_thickness)
 
-            label = " ".join(label_parts)
+                # Prepare label
+                label_parts = []
+                if show_class:
+                    label_parts.append(f"Class: {class_name}")
+                if show_conf:
+                    label_parts.append(f"{conf:.2%}")
 
-            # Draw label background
-            (label_w, label_h), baseline = cv2.getTextSize(
-                label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2
-            )
-            cv2.rectangle(annotated, (x1, y1 - label_h - 10),
-                         (x1 + label_w, y1), color, -1)
+                label = " - ".join(label_parts)
 
-            # Draw label text
-            cv2.putText(annotated, label, (x1, y1 - 5),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+                # Draw label background (center top)
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                font_scale = 1.2
+                font_thickness = 3
+                (label_w, label_h), baseline = cv2.getTextSize(label, font, font_scale, font_thickness)
 
-            # Draw center point
-            center_x, center_y = det['center']
-            cv2.circle(annotated, (center_x, center_y), 5, color, -1)
+                # Center position
+                x_pos = (w - label_w) // 2
+                y_pos = 50
+
+                # Draw background rectangle
+                cv2.rectangle(annotated,
+                            (x_pos - 10, y_pos - label_h - 15),
+                            (x_pos + label_w + 10, y_pos + 10),
+                            color, -1)
+
+                # Draw text
+                cv2.putText(annotated, label, (x_pos, y_pos),
+                          font, font_scale, (255, 255, 255), font_thickness)
+
+                continue
+
+            # Handle Detection/Segmentation/Pose (with bounding boxes)
+            if 'bbox' in det:
+                x1, y1, x2, y2 = det['bbox']
+
+                # Draw bounding box
+                cv2.rectangle(annotated, (x1, y1), (x2, y2), color, 2)
+
+                # Prepare label
+                label_parts = []
+                if show_class:
+                    label_parts.append(class_name)
+                if show_conf:
+                    label_parts.append(f"{conf:.2f}")
+
+                label = " ".join(label_parts)
+
+                # Draw label background
+                (label_w, label_h), baseline = cv2.getTextSize(
+                    label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2
+                )
+                cv2.rectangle(annotated, (x1, y1 - label_h - 10),
+                             (x1 + label_w, y1), color, -1)
+
+                # Draw label text
+                cv2.putText(annotated, label, (x1, y1 - 5),
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+
+                # Draw center point if available
+                if 'center' in det:
+                    center_x, center_y = det['center']
+                    cv2.circle(annotated, (center_x, center_y), 5, color, -1)
+
+                # Draw pose keypoints if available
+                if det_type == 'pose' and 'keypoints' in det:
+                    keypoints = det['keypoints']
+                    for kp in keypoints:
+                        if len(kp) >= 2:  # x, y coordinates
+                            kp_x, kp_y = int(kp[0]), int(kp[1])
+                            cv2.circle(annotated, (kp_x, kp_y), 3, (0, 255, 0), -1)
 
         return annotated
 

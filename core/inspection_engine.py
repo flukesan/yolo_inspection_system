@@ -95,8 +95,22 @@ class InspectionEngine:
             detections = self.yolo_detector.detect(frame)
             detection_time = (time.time() - start_time) * 1000  # ms
 
-            # Analyze results
-            has_defect = len(detections) > 0
+            # Analyze results based on model type
+            model_type = self.yolo_detector.model_type
+
+            if model_type == 'classification':
+                # For classification: check if detected class is "defect" class
+                has_defect = False
+                if len(detections) > 0:
+                    # Check if class name indicates defect
+                    class_name = detections[0]['class_name'].lower()
+                    # Classes that indicate defect/NG
+                    defect_classes = ['defect', 'bad', 'ng', 'fail', 'scratch', 'crack', 'dent']
+                    has_defect = any(defect in class_name for defect in defect_classes)
+            else:
+                # For detection/segmentation/pose: any detection means defect
+                has_defect = len(detections) > 0
+
             result_status = "NG" if has_defect else "OK"
 
             # Create inspection result
@@ -111,10 +125,13 @@ class InspectionEngine:
                 'annotated_image': None
             }
 
-            # Draw detections
+            # Draw detections (always draw, even if empty - for live view)
             if len(detections) > 0:
                 annotated = self.yolo_detector.draw_detections(frame, detections)
                 inspection_result['annotated_image'] = annotated
+            else:
+                # No detections - use original frame for display
+                inspection_result['annotated_image'] = frame
 
             # Update statistics
             self._update_statistics(inspection_result)
