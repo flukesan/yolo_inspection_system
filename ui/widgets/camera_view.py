@@ -73,14 +73,14 @@ class CameraView(QWidget):
             # Convert to QImage
             h, w, ch = rgb_frame.shape
             bytes_per_line = ch * w
-            q_image = QImage(rgb_frame.data, w, h, bytes_per_line, QImage.Format_RGB888)
+            q_image = QImage(rgb_frame.data, w, h, bytes_per_line, QImage.Format.Format_RGB888)
 
             # Scale to label size while keeping aspect ratio
             pixmap = QPixmap.fromImage(q_image)
             scaled_pixmap = pixmap.scaled(
                 self.image_label.size(),
-                Qt.KeepAspectRatio,
-                Qt.SmoothTransformation
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation
             )
 
             self.image_label.setPixmap(scaled_pixmap)
