@@ -2,6 +2,7 @@
 Inspection Engine - Logic การตรวจสอบคุณภาพ
 Main inspection logic and workflow
 """
+import os
 import time
 from typing import Dict, Any, List, Optional, Callable
 from datetime import datetime
@@ -114,8 +115,9 @@ class InspectionEngine:
             result_status = "NG" if has_defect else "OK"
 
             # Create inspection result
+            timestamp_obj = datetime.now()
             inspection_result = {
-                'timestamp': datetime.now(),
+                'timestamp': timestamp_obj,
                 'status': result_status,
                 'has_defect': has_defect,
                 'num_defects': len(detections),
@@ -125,13 +127,23 @@ class InspectionEngine:
                 'annotated_image': None
             }
 
-            # Draw detections (always draw, even if empty - for live view)
-            if len(detections) > 0:
-                annotated = self.yolo_detector.draw_detections(frame, detections)
-                inspection_result['annotated_image'] = annotated
-            else:
-                # No detections - use original frame for display
-                inspection_result['annotated_image'] = frame
+            # Prepare overlay information
+            timestamp_str = timestamp_obj.strftime("%Y-%m-%d %H:%M:%S")
+
+            # Get model name from path (extract filename without extension)
+            model_name = "Unknown"
+            if self.yolo_detector and self.yolo_detector.model_path:
+                model_name = os.path.splitext(os.path.basename(self.yolo_detector.model_path))[0]
+
+            # Draw detections with overlay info (always draw for live view)
+            annotated = self.yolo_detector.draw_detections(
+                frame,
+                detections,
+                timestamp=timestamp_str,
+                model_name=model_name,
+                status=result_status
+            )
+            inspection_result['annotated_image'] = annotated
 
             # Update statistics
             self._update_statistics(inspection_result)

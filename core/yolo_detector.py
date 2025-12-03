@@ -209,7 +209,9 @@ class YOLODetector:
             return []
 
     def draw_detections(self, image: np.ndarray, detections: List[Dict[str, Any]],
-                        show_conf: bool = True, show_class: bool = True) -> np.ndarray:
+                        show_conf: bool = True, show_class: bool = True,
+                        timestamp: str = None, model_name: str = None,
+                        status: str = None) -> np.ndarray:
         """
         วาด bounding box และ label บนภาพ (รองรับทุกประเภทโมเดล)
 
@@ -218,11 +220,59 @@ class YOLODetector:
             detections: List of detections from detect()
             show_conf: Show confidence score
             show_class: Show class name
+            timestamp: Timestamp string to display (optional)
+            model_name: Model name to display (optional)
+            status: Inspection status "OK" or "NG" (optional)
 
         Returns:
             Annotated image
         """
         annotated = image.copy()
+        h, w = image.shape[:2]
+
+        # Draw overlay information at top (Date/Time, Model, Status)
+        if timestamp or model_name or status:
+            # Create semi-transparent overlay at top
+            overlay = annotated.copy()
+            overlay_height = 80
+            cv2.rectangle(overlay, (0, 0), (w, overlay_height), (0, 0, 0), -1)
+            cv2.addWeighted(overlay, 0.5, annotated, 0.5, 0, annotated)
+
+            # Font settings
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            font_scale = 0.8
+            font_thickness = 2
+            text_color = (255, 255, 255)  # White text on dark background
+
+            y_offset = 30  # Starting Y position
+
+            # Left side: Date/Time and Model name
+            if timestamp:
+                date_text = f"Date : {timestamp}"
+                cv2.putText(annotated, date_text, (15, y_offset),
+                           font, font_scale, text_color, font_thickness)
+
+            if model_name:
+                model_text = f"Model: {model_name}"
+                cv2.putText(annotated, model_text, (15, y_offset + 35),
+                           font, font_scale, text_color, font_thickness)
+
+            # Right side: Status (OK/NG)
+            if status:
+                status_text = f"Status: {status}"
+                # Choose color based on status
+                if status == "OK":
+                    status_color = (0, 255, 0)  # Green for OK
+                else:  # NG
+                    status_color = (0, 0, 255)  # Red for NG
+
+                # Get text size to align right
+                (text_w, text_h), _ = cv2.getTextSize(status_text, font, 1.2, 3)
+                status_x = w - text_w - 15
+
+                # Draw status with larger font
+                cv2.putText(annotated, status_text, (status_x, y_offset + 10),
+                           font, 1.2, status_color, 3)
 
         # Define colors for different classes
         colors = [
