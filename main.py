@@ -147,9 +147,8 @@ class AppController:
 
 def main():
     """Main function"""
-    # Enable High DPI scaling
-    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
-    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
+    # Note: PyQt6 enables High DPI scaling by default
+    # Qt.AA_EnableHighDpiScaling and Qt.AA_UseHighDpiPixmaps are removed in PyQt6
 
     # Create application
     app = QApplication(sys.argv)
