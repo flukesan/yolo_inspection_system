@@ -235,10 +235,43 @@ class MainWindow(QMainWindow):
         """เปิด Camera Profiles Dialog"""
         if self.app_controller and hasattr(self.app_controller, 'settings'):
             dialog = CameraProfilesDialog(self.app_controller.settings, self)
-            if dialog.exec() and dialog.modified:
-                self.alert_panel.add_success("บันทึกการตั้งค่า Camera Profiles แล้ว")
+            result = dialog.exec()
+
+            if result:
+                # Check if user clicked "Connect" button
+                if dialog.selected_profile:
+                    self.connect_with_profile(dialog.selected_profile)
+                elif dialog.modified:
+                    self.alert_panel.add_success("บันทึกการตั้งค่า Camera Profiles แล้ว")
         else:
             QMessageBox.warning(self, "ข้อผิดพลาด", "ไม่สามารถเปิด Camera Profiles ได้")
+
+    def connect_with_profile(self, profile):
+        """เชื่อมต่อกล้องด้วย profile"""
+        if not self.app_controller:
+            return
+
+        try:
+            # Connect camera with profile settings
+            success = self.app_controller.connect_camera(
+                source=profile['source'],
+                width=profile['width'],
+                height=profile['height'],
+                fps=profile['fps']
+            )
+
+            if success:
+                self.camera_view.start(30)
+                info_str = f"({profile['width']}x{profile['height']} @ {profile['fps']}fps)"
+                self.control_panel.update_camera_status(True, info_str)
+                self.camera_status.setText(f"กล้อง: {profile['name']} {info_str}")
+                self.alert_panel.add_success(f"เชื่อมต่อกล้อง '{profile['name']}' สำเร็จ")
+            else:
+                self.alert_panel.add_error(f"ไม่สามารถเชื่อมต่อกล้อง '{profile['name']}'")
+                QMessageBox.warning(self, "ข้อผิดพลาด", f"ไม่สามารถเชื่อมต่อกล้อง\n\nProfile: {profile['name']}\nSource: {profile['source']}")
+        except Exception as e:
+            self.alert_panel.add_error(f"Error: {str(e)}")
+            QMessageBox.critical(self, "ข้อผิดพลาด", f"เกิดข้อผิดพลาด:\n{str(e)}")
 
     def on_settings(self):
         """เปิดหน้าต่างตั้งค่า"""

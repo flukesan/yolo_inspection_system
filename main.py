@@ -79,13 +79,29 @@ class AppController:
 
         print("\n✓ เริ่มต้นระบบสำเร็จ!\n")
 
-    def connect_camera(self) -> bool:
-        """เชื่อมต่อกล้อง"""
+    def connect_camera(self, source=None, width=None, height=None, fps=None) -> bool:
+        """
+        เชื่อมต่อกล้อง
+
+        Args:
+            source: Camera source (index or RTSP URL). If None, use settings.
+            width: Frame width. If None, use settings.
+            height: Frame height. If None, use settings.
+            fps: Frame rate. If None, use settings.
+
+        Returns:
+            bool: True if connected successfully
+        """
         try:
-            source = self.settings.get('camera.default_source', 0)
-            width = self.settings.get('camera.width', 1280)
-            height = self.settings.get('camera.height', 720)
-            fps = self.settings.get('camera.fps', 30)
+            # Use provided parameters or fall back to settings
+            if source is None:
+                source = self.settings.get('camera.default_source', 0)
+            if width is None:
+                width = self.settings.get('camera.width', 1280)
+            if height is None:
+                height = self.settings.get('camera.height', 720)
+            if fps is None:
+                fps = self.settings.get('camera.fps', 30)
 
             return self.camera_manager.connect(source, width, height, fps)
 

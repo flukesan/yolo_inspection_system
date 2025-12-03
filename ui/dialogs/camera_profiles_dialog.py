@@ -17,6 +17,7 @@ class CameraProfilesDialog(QDialog):
         super().__init__(parent)
         self.settings = settings
         self.modified = False
+        self.selected_profile = None  # Store selected profile for connection
         self.setup_ui()
         self.load_profiles()
 
@@ -66,6 +67,30 @@ class CameraProfilesDialog(QDialog):
         button_layout.addWidget(self.set_default_btn)
 
         left_layout.addLayout(button_layout)
+
+        # Connect button (separate row)
+        connect_layout = QHBoxLayout()
+        self.connect_btn = QPushButton("🔌 เชื่อมต่อด้วย Profile นี้")
+        self.connect_btn.clicked.connect(self.on_connect_profile)
+        self.connect_btn.setEnabled(False)
+        self.connect_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                font-weight: bold;
+                padding: 10px;
+            }
+            QPushButton:hover {
+                background-color: #45a049;
+            }
+            QPushButton:disabled {
+                background-color: #cccccc;
+                color: #666666;
+            }
+        """)
+        connect_layout.addWidget(self.connect_btn)
+        left_layout.addLayout(connect_layout)
+
         content_layout.addLayout(left_layout, stretch=2)
 
         # Right side - Profile details
@@ -212,6 +237,7 @@ class CameraProfilesDialog(QDialog):
         """เมื่อเลือก profile"""
         self.delete_btn.setEnabled(True)
         self.set_default_btn.setEnabled(True)
+        self.connect_btn.setEnabled(True)
 
         profile_data = item.data(Qt.ItemDataRole.UserRole)
 
@@ -356,3 +382,25 @@ class CameraProfilesDialog(QDialog):
         self.modified = True
 
         QMessageBox.information(self, "สำเร็จ", f"ตั้ง '{profile_name}' เป็น Profile เริ่มต้นแล้ว")
+
+    def on_connect_profile(self):
+        """เชื่อมต่อด้วย profile ที่เลือก"""
+        item = self.profile_list.currentItem()
+        if not item:
+            return
+
+        profile_name = item.text().replace("⭐ ", "")
+        profile_data = item.data(Qt.ItemDataRole.UserRole)
+
+        # Store selected profile data
+        self.selected_profile = {
+            "name": profile_name,
+            "type": profile_data.get("type", "usb"),
+            "source": profile_data.get("source", 0),
+            "width": profile_data.get("width", 1280),
+            "height": profile_data.get("height", 720),
+            "fps": profile_data.get("fps", 30)
+        }
+
+        # Close dialog and return Accepted
+        self.accept()
