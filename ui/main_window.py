@@ -220,6 +220,7 @@ class MainWindow(QMainWindow):
         if self.app_controller:
             self.app_controller.start_inspection()
             self.inspection_timer.start(100)  # Check every 100ms
+            self.camera_view.set_inspecting(True)  # Enable inspection mode for camera view
             self.alert_panel.add_success("เริ่มการตรวจสอบ")
             self.statusbar.showMessage("กำลังตรวจสอบ...")
 
@@ -228,6 +229,7 @@ class MainWindow(QMainWindow):
         if self.app_controller:
             self.app_controller.stop_inspection()
             self.inspection_timer.stop()
+            self.camera_view.set_inspecting(False)  # Disable inspection mode for camera view
             self.alert_panel.add_info("หยุดการตรวจสอบ")
             self.statusbar.showMessage("พร้อมใช้งาน")
 

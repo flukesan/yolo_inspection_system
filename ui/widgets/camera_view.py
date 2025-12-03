@@ -22,6 +22,8 @@ class CameraView(QWidget):
 
         # Current frame
         self.current_frame = None
+        self.latest_annotated_frame = None  # Keep latest annotated frame for inspection
+        self.is_inspecting = False  # Flag to indicate inspection is running
         self.camera_manager = None
         self.show_annotations = True
 
@@ -59,6 +61,12 @@ class CameraView(QWidget):
         if self.camera_manager is None:
             return
 
+        # If inspecting and we have annotated frame, show that instead
+        if self.is_inspecting and self.latest_annotated_frame is not None:
+            self.display_frame(self.latest_annotated_frame)
+            return
+
+        # Otherwise show normal camera frame
         frame = self.camera_manager.get_frame()
         if frame is not None:
             self.current_frame = frame
@@ -91,11 +99,19 @@ class CameraView(QWidget):
     def display_result(self, annotated_frame: np.ndarray):
         """แสดงผลการตรวจสอบ"""
         if annotated_frame is not None and self.show_annotations:
+            self.latest_annotated_frame = annotated_frame
             self.display_frame(annotated_frame)
 
     def set_show_annotations(self, show: bool):
         """ตั้งค่าการแสดง annotations"""
         self.show_annotations = show
+
+    def set_inspecting(self, is_inspecting: bool):
+        """ตั้งค่าสถานะการตรวจสอบ"""
+        self.is_inspecting = is_inspecting
+        if not is_inspecting:
+            # Clear latest annotated frame when inspection stops
+            self.latest_annotated_frame = None
 
     def get_current_frame(self):
         """ดึงภาพปัจจุบัน"""
