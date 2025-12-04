@@ -38,6 +38,7 @@ class InspectionEngine:
         self.total_defects = 0
         self.defect_counts = {}  # {class_name: count}
         self.start_time = None
+        self.stop_time = None  # Track when inspection stops
         self.last_inspection_time = None
 
         # Callbacks
@@ -49,12 +50,14 @@ class InspectionEngine:
         self.is_running = True
         self.is_paused = False
         self.start_time = time.time()
+        self.stop_time = None  # Reset stop time when starting
         print("✓ เริ่มการตรวจสอบคุณภาพ")
 
     def stop(self) -> None:
         """หยุดการตรวจสอบ"""
         self.is_running = False
         self.is_paused = False
+        self.stop_time = time.time()  # Record stop time for throughput calculation
         print("✓ หยุดการตรวจสอบคุณภาพ")
 
     def pause(self) -> None:
@@ -99,6 +102,14 @@ class InspectionEngine:
             # Analyze results based on model type
             model_type = self.yolo_detector.model_type
 
+            # Determine if we should count this inspection in statistics
+            # For detection/segmentation/pose: only count when objects are detected
+            # For classification: always count (it classifies the whole image)
+            should_count = True
+            if model_type in ['detection', 'segmentation', 'pose']:
+                # Only count if there are detections (objects in frame)
+                should_count = len(detections) > 0
+
             if model_type == 'classification':
                 # For classification: check if detected class is "defect" class
                 has_defect = False
@@ -124,7 +135,8 @@ class InspectionEngine:
                 'detections': detections,
                 'detection_time_ms': round(detection_time, 2),
                 'image': frame,
-                'annotated_image': None
+                'annotated_image': None,
+                'should_count': should_count  # Flag to indicate if this should be counted in stats
             }
 
             # Prepare overlay information
@@ -145,8 +157,9 @@ class InspectionEngine:
             )
             inspection_result['annotated_image'] = annotated
 
-            # Update statistics
-            self._update_statistics(inspection_result)
+            # Update statistics (only if should_count is True)
+            if should_count:
+                self._update_statistics(inspection_result)
 
             # Save to database
             if self.auto_save:
@@ -221,7 +234,11 @@ class InspectionEngine:
         """
         elapsed_time = 0
         if self.start_time is not None:
-            elapsed_time = time.time() - self.start_time
+            # Use stop_time if inspection has stopped, otherwise use current time
+            if self.stop_time is not None:
+                elapsed_time = self.stop_time - self.start_time
+            else:
+                elapsed_time = time.time() - self.start_time
 
         # Calculate rates
         defect_rate = 0
