@@ -147,13 +147,16 @@ class InspectionEngine:
             if self.yolo_detector and self.yolo_detector.model_path:
                 model_name = os.path.splitext(os.path.basename(self.yolo_detector.model_path))[0]
 
+            # Only show status if we're counting this inspection (has objects)
+            display_status = result_status if should_count else None
+
             # Draw detections with overlay info (always draw for live view)
             annotated = self.yolo_detector.draw_detections(
                 frame,
                 detections,
                 timestamp=timestamp_str,
                 model_name=model_name,
-                status=result_status
+                status=display_status  # None when no objects detected
             )
             inspection_result['annotated_image'] = annotated
 
