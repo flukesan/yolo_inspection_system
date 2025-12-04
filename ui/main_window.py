@@ -272,6 +272,27 @@ class MainWindow(QMainWindow):
             self.app_controller.inspection_engine.is_running = False
 
         if result:
+            # Check if there were any objects to count
+            should_count = result.get('should_count', True)
+
+            if not should_count:
+                # No objects detected - display message and keep showing camera view
+                self.camera_view.set_inspecting(True)
+
+                # Update camera view with annotated image (shows Date/Time, Model, but no Status)
+                if result['annotated_image'] is not None:
+                    self.camera_view.display_result(result['annotated_image'])
+
+                # Log that no objects were detected
+                self.alert_panel.add_info("✓ Snapshot: Not detect object")
+                self.statusbar.showMessage("Snapshot: Not detect object", 5000)
+
+                # Schedule to clear inspection mode after 3 seconds
+                from PyQt6.QtCore import QTimer
+                QTimer.singleShot(3000, lambda: self.camera_view.set_inspecting(False))
+                return
+
+            # Objects were detected - show status and count statistics
             # Enable inspection mode to show annotated image
             self.camera_view.set_inspecting(True)
 
