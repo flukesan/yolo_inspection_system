@@ -182,7 +182,9 @@ class YOLODetector:
                         if self.model_type == 'segmentation' and hasattr(result, 'masks') and result.masks is not None:
                             masks = result.masks.cpu().numpy()
                             if idx < len(masks.data):
-                                detection['mask'] = masks.data[idx]
+                                # Convert mask to list for JSON serialization
+                                # Note: mask can be large, consider using compressed format for production
+                                detection['mask'] = masks.data[idx].tolist()
 
                         # Add pose keypoints if available
                         if self.model_type == 'pose' and hasattr(result, 'keypoints') and result.keypoints is not None:
