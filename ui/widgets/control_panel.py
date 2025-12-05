@@ -26,6 +26,7 @@ class ControlPanel(QWidget):
         self.is_running = False
         self.is_paused = False
         self.camera_connected = False  # Track camera connection state
+        self.snapshot_mode = 'detection'  # 'detection' or 'training'
         self.setup_ui()
 
     def setup_ui(self):
@@ -188,6 +189,45 @@ class ControlPanel(QWidget):
         self.snapshot_btn.setToolTip("จับภาพและตรวจสอบ 1 ครั้ง (ไม่ต้อง Start/Stop)")
 
         inspection_layout.addWidget(self.snapshot_btn)
+
+        # Snapshot mode selector
+        mode_layout = QHBoxLayout()
+        mode_label = QLabel("โหมด Snapshot:")
+        mode_label.setStyleSheet("font-size: 12px; color: #aaa;")
+
+        self.snapshot_mode_combo = QComboBox()
+        self.snapshot_mode_combo.addItems([
+            "🔍 Detection (ตรวจสอบ)",
+            "📚 Training (เก็บรูปเทรน)"
+        ])
+        self.snapshot_mode_combo.setStyleSheet("""
+            QComboBox {
+                padding: 5px;
+                font-size: 12px;
+                background-color: #3a3a3a;
+                border: 1px solid #555;
+                border-radius: 3px;
+                color: white;
+            }
+            QComboBox:hover {
+                border: 1px solid #777;
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+            QComboBox::down-arrow {
+                image: url(down_arrow.png);
+                width: 12px;
+                height: 12px;
+            }
+        """)
+        self.snapshot_mode_combo.currentIndexChanged.connect(self._on_snapshot_mode_changed)
+
+        mode_layout.addWidget(mode_label)
+        mode_layout.addWidget(self.snapshot_mode_combo)
+
+        inspection_layout.addLayout(mode_layout)
+
         inspection_group.setLayout(inspection_layout)
 
         # Settings & Report Group
@@ -255,6 +295,19 @@ class ControlPanel(QWidget):
     def _on_snapshot_clicked(self):
         """จัดการปุ่ม Snapshot/Trigger"""
         self.snapshot_clicked.emit()
+
+    def _on_snapshot_mode_changed(self, index: int):
+        """จัดการการเปลี่ยนโหมด Snapshot"""
+        if index == 0:
+            self.snapshot_mode = 'detection'
+            self.snapshot_btn.setToolTip("จับภาพและตรวจสอบ 1 ครั้ง (ไม่ต้อง Start/Stop)")
+        else:  # index == 1
+            self.snapshot_mode = 'training'
+            self.snapshot_btn.setToolTip("จับภาพเพื่อเก็บไว้เทรนโมเดล")
+
+    def get_snapshot_mode(self) -> str:
+        """ดึงโหมด Snapshot ปัจจุบัน"""
+        return self.snapshot_mode
 
     def update_camera_status(self, connected: bool, info: str = ""):
         """อัพเดทสถานะกล้อง"""

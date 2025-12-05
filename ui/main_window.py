@@ -7,6 +7,9 @@ from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QStatusBar, QLabel)
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QIcon, QAction
+import os
+import cv2
+from datetime import datetime
 
 from .widgets.camera_view import CameraView
 from .widgets.control_panel import ControlPanel
@@ -14,6 +17,7 @@ from .widgets.statistics_panel import StatisticsPanel
 from .widgets.alert_panel import AlertPanel
 from .dialogs.camera_profiles_dialog import CameraProfilesDialog
 from .dialogs.model_profiles_dialog import ModelProfilesDialog
+from .dialogs.snapshot_training_settings_dialog import SnapshotTrainingSettingsDialog
 
 
 class MainWindow(QMainWindow):
@@ -113,6 +117,12 @@ class MainWindow(QMainWindow):
         settings_action = QAction("ตั้งค่า...", self)
         settings_action.triggered.connect(self.on_settings)
         tools_menu.addAction(settings_action)
+
+        snapshot_training_settings_action = QAction("📚 ตั้งค่า Snapshot Training...", self)
+        snapshot_training_settings_action.triggered.connect(self.on_snapshot_training_settings)
+        tools_menu.addAction(snapshot_training_settings_action)
+
+        tools_menu.addSeparator()
 
         report_action = QAction("สร้างรายงาน...", self)
         report_action.triggered.connect(self.on_generate_report)
@@ -249,6 +259,15 @@ class MainWindow(QMainWindow):
         if not self.app_controller:
             return
 
+        # Check snapshot mode
+        snapshot_mode = self.control_panel.get_snapshot_mode()
+
+        if snapshot_mode == 'training':
+            # Training mode - save image for training
+            self.save_snapshot_for_training()
+            return
+
+        # Detection mode - continue with inspection
         # Check if camera is connected
         if not self.app_controller.camera_manager or not self.app_controller.camera_manager.is_connected():
             self.alert_panel.add_error("กรุณาเชื่อมต่อกล้องก่อนใช้งาน Snapshot")
@@ -323,6 +342,80 @@ class MainWindow(QMainWindow):
 
         else:
             self.alert_panel.add_error("Snapshot: เกิดข้อผิดพลาดในการตรวจสอบ")
+
+    def save_snapshot_for_training(self):
+        """บันทึกภาพสำหรับเทรนโมเดล"""
+        if not self.app_controller:
+            return
+
+        # Check if camera is connected
+        if not self.app_controller.camera_manager or not self.app_controller.camera_manager.is_connected():
+            self.alert_panel.add_error("กรุณาเชื่อมต่อกล้องก่อนใช้งาน Snapshot")
+            return
+
+        # Get training settings
+        training_settings = self.app_controller.settings.get('snapshot_training', {
+            'output_dir': 'training_images',
+            'image_size': '640x640',
+            'file_prefix': 'train_image'
+        })
+
+        output_dir = training_settings.get('output_dir', 'training_images')
+        image_size_str = training_settings.get('image_size', '640x640')
+        file_prefix = training_settings.get('file_prefix', 'train_image')
+
+        # Parse image size
+        try:
+            width, height = map(int, image_size_str.split('x'))
+        except:
+            width, height = 640, 640
+
+        # Create output directory if not exists
+        try:
+            os.makedirs(output_dir, exist_ok=True)
+        except Exception as e:
+            self.alert_panel.add_error(f"ไม่สามารถสร้างโฟลเดอร์: {e}")
+            return
+
+        # Get frame from camera
+        frame = self.app_controller.camera_manager.get_frame()
+        if frame is None:
+            self.alert_panel.add_error("ไม่สามารถจับภาพจากกล้องได้")
+            return
+
+        # Resize image
+        resized_frame = cv2.resize(frame, (width, height))
+
+        # Generate filename with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{file_prefix}_{timestamp}.jpg"
+        filepath = os.path.join(output_dir, filename)
+
+        # Save image
+        try:
+            cv2.imwrite(filepath, resized_frame)
+            self.alert_panel.add_success(f"✓ บันทึกรูป: {filename}")
+            self.statusbar.showMessage(f"บันทึกรูปเรียบร้อย: {filepath}", 5000)
+
+            # Briefly show the captured image
+            self.camera_view.set_inspecting(True)
+            self.camera_view.display_result(resized_frame)
+
+            # Return to normal view after 1 second
+            from PyQt6.QtCore import QTimer
+            QTimer.singleShot(1000, lambda: self.camera_view.set_inspecting(False))
+
+        except Exception as e:
+            self.alert_panel.add_error(f"ไม่สามารถบันทึกรูป: {e}")
+
+    def on_snapshot_training_settings(self):
+        """เปิด dialog ตั้งค่า Snapshot Training"""
+        if self.app_controller and hasattr(self.app_controller, 'settings'):
+            dialog = SnapshotTrainingSettingsDialog(self.app_controller.settings, self)
+            result = dialog.exec()
+
+            if result:
+                self.alert_panel.add_success("✓ บันทึกการตั้งค่า Snapshot Training เรียบร้อย")
 
     def run_inspection(self):
         """รันการตรวจสอบ 1 รอบ"""
