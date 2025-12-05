@@ -153,12 +153,10 @@ class SnapshotTrainingSettingsDialog(QDialog):
             QMessageBox.warning(self, "คำเตือน", "กรุณาระบุชื่อไฟล์เริ่มต้น")
             return
 
-        # Save to settings
-        self.settings['snapshot_training'] = {
-            'output_dir': output_dir,
-            'image_size': image_size,
-            'file_prefix': file_prefix
-        }
+        # Save to settings using set() method
+        self.settings.set('snapshot_training.output_dir', output_dir)
+        self.settings.set('snapshot_training.image_size', image_size)
+        self.settings.set('snapshot_training.file_prefix', file_prefix)
 
         self.settings.save()
         self.accept()

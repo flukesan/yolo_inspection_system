@@ -95,6 +95,13 @@ class Settings:
             "show_statistics": True,
             "show_log": True,
             "auto_scroll_log": True
+        },
+
+        # Snapshot Training Settings
+        "snapshot_training": {
+            "output_dir": "training_images",
+            "image_size": "640x640",
+            "file_prefix": "train_image"
         }
     }
 
