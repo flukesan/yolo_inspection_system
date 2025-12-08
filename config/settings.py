@@ -101,7 +101,8 @@ class Settings:
         "snapshot_training": {
             "output_dir": "training_images",
             "image_size": "640x640",
-            "file_prefix": "train_image"
+            "file_prefix": "train_image",
+            "resize_mode": "crop"  # letterbox, crop, stretch
         }
     }
 

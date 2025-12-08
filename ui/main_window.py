@@ -358,12 +358,14 @@ class MainWindow(QMainWindow):
         training_settings = self.app_controller.settings.get('snapshot_training', {
             'output_dir': 'training_images',
             'image_size': '640x640',
-            'file_prefix': 'train_image'
+            'file_prefix': 'train_image',
+            'resize_mode': 'crop'
         })
 
         output_dir = training_settings.get('output_dir', 'training_images')
         image_size_str = training_settings.get('image_size', '640x640')
         file_prefix = training_settings.get('file_prefix', 'train_image')
+        resize_mode = training_settings.get('resize_mode', 'crop')
 
         # Parse image size
         try:
@@ -384,8 +386,13 @@ class MainWindow(QMainWindow):
             self.alert_panel.add_error("ไม่สามารถจับภาพจากกล้องได้")
             return
 
-        # Resize image with letterbox (preserve aspect ratio + padding)
-        resized_frame = self.letterbox_resize(frame, (width, height))
+        # Resize image based on selected mode
+        if resize_mode == 'letterbox':
+            resized_frame = self.letterbox_resize(frame, (width, height))
+        elif resize_mode == 'crop':
+            resized_frame = self.crop_resize(frame, (width, height))
+        else:  # stretch
+            resized_frame = cv2.resize(frame, (width, height))
 
         # Generate filename with timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -443,6 +450,38 @@ class MainWindow(QMainWindow):
         letterbox_img[top:top + new_h, left:left + new_w] = resized
 
         return letterbox_img
+
+    def crop_resize(self, image, target_size):
+        """
+        Resize image with center crop (preserve aspect ratio, no padding)
+        Image is scaled to fit target, then center cropped
+
+        Args:
+            image: Input image (numpy array)
+            target_size: Target size tuple (width, height)
+
+        Returns:
+            Resized and cropped image (exact target size, no distortion)
+        """
+        target_w, target_h = target_size
+        h, w = image.shape[:2]
+
+        # Calculate scaling to fill target (larger scale)
+        scale = max(target_w / w, target_h / h)
+        new_w = int(w * scale)
+        new_h = int(h * scale)
+
+        # Resize image preserving aspect ratio
+        resized = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
+
+        # Calculate crop offsets (center crop)
+        crop_x = (new_w - target_w) // 2
+        crop_y = (new_h - target_h) // 2
+
+        # Crop to target size
+        cropped = resized[crop_y:crop_y + target_h, crop_x:crop_x + target_w]
+
+        return cropped
 
     def on_snapshot_training_settings(self):
         """เปิด dialog ตั้งค่า Snapshot Training"""

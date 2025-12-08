@@ -61,6 +61,16 @@ class SnapshotTrainingSettingsDialog(QDialog):
         img_form.addRow("ขนาดรูปภาพ:", self.image_size_combo)
         img_form.addRow("ชื่อไฟล์เริ่มต้น:", self.file_prefix_edit)
 
+        # Resize mode
+        self.resize_mode_combo = QComboBox()
+        self.resize_mode_combo.addItems([
+            "Letterbox (รักษาสัดส่วน + padding)",
+            "Crop (รักษาสัดส่วน ไม่มี padding)",
+            "Stretch (บังคับขนาด อาจบิดเบี้ยว)"
+        ])
+        self.resize_mode_combo.setCurrentIndex(1)  # Default to Crop
+        img_form.addRow("วิธีการ Resize:", self.resize_mode_combo)
+
         # Info label
         info_label = QLabel("รูปแบบชื่อไฟล์: {prefix}_{YYYYMMDD_HHMMSS}.jpg")
         info_label.setStyleSheet("color: #888; font-size: 11px; font-style: italic;")
@@ -131,16 +141,34 @@ class SnapshotTrainingSettingsDialog(QDialog):
         output_dir = training_settings.get('output_dir', 'training_images')
         image_size = training_settings.get('image_size', '640x640')
         file_prefix = training_settings.get('file_prefix', 'train_image')
+        resize_mode = training_settings.get('resize_mode', 'crop')
 
         self.output_dir_edit.setText(output_dir)
         self.image_size_combo.setCurrentText(image_size)
         self.file_prefix_edit.setText(file_prefix)
+
+        # Set resize mode
+        if resize_mode == 'letterbox':
+            self.resize_mode_combo.setCurrentIndex(0)
+        elif resize_mode == 'crop':
+            self.resize_mode_combo.setCurrentIndex(1)
+        elif resize_mode == 'stretch':
+            self.resize_mode_combo.setCurrentIndex(2)
 
     def save_settings(self):
         """บันทึก settings"""
         output_dir = self.output_dir_edit.text().strip()
         image_size = self.image_size_combo.currentText()
         file_prefix = self.file_prefix_edit.text().strip()
+
+        # Get resize mode
+        resize_mode_index = self.resize_mode_combo.currentIndex()
+        if resize_mode_index == 0:
+            resize_mode = 'letterbox'
+        elif resize_mode_index == 1:
+            resize_mode = 'crop'
+        else:  # 2
+            resize_mode = 'stretch'
 
         # Validation
         if not output_dir:
@@ -157,6 +185,7 @@ class SnapshotTrainingSettingsDialog(QDialog):
         self.settings.set('snapshot_training.output_dir', output_dir)
         self.settings.set('snapshot_training.image_size', image_size)
         self.settings.set('snapshot_training.file_prefix', file_prefix)
+        self.settings.set('snapshot_training.resize_mode', resize_mode)
 
         self.settings.save()
         self.accept()
