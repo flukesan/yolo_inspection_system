@@ -9,6 +9,7 @@ from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QIcon, QAction
 import os
 import cv2
+import numpy as np
 from datetime import datetime
 
 from .widgets.camera_view import CameraView
@@ -383,8 +384,8 @@ class MainWindow(QMainWindow):
             self.alert_panel.add_error("ไม่สามารถจับภาพจากกล้องได้")
             return
 
-        # Resize image
-        resized_frame = cv2.resize(frame, (width, height))
+        # Resize image with letterbox (preserve aspect ratio + padding)
+        resized_frame = self.letterbox_resize(frame, (width, height))
 
         # Generate filename with timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -407,6 +408,41 @@ class MainWindow(QMainWindow):
 
         except Exception as e:
             self.alert_panel.add_error(f"ไม่สามารถบันทึกรูป: {e}")
+
+    def letterbox_resize(self, image, target_size):
+        """
+        Resize image with letterbox (preserve aspect ratio + padding)
+        This is the same method YOLO uses for training
+
+        Args:
+            image: Input image (numpy array)
+            target_size: Target size tuple (width, height)
+
+        Returns:
+            Resized image with letterbox padding
+        """
+        target_w, target_h = target_size
+        h, w = image.shape[:2]
+
+        # Calculate scaling factor to fit image into target size
+        scale = min(target_w / w, target_h / h)
+        new_w = int(w * scale)
+        new_h = int(h * scale)
+
+        # Resize image preserving aspect ratio
+        resized = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
+
+        # Create new image with target size (filled with gray color)
+        letterbox_img = np.full((target_h, target_w, 3), 114, dtype=np.uint8)  # Gray padding
+
+        # Calculate padding offsets (center the image)
+        top = (target_h - new_h) // 2
+        left = (target_w - new_w) // 2
+
+        # Place resized image on letterbox
+        letterbox_img[top:top + new_h, left:left + new_w] = resized
+
+        return letterbox_img
 
     def on_snapshot_training_settings(self):
         """เปิด dialog ตั้งค่า Snapshot Training"""
