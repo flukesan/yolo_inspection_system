@@ -125,7 +125,7 @@ class AppController:
             return False
 
     def load_model(self, model_type=None, model_path=None, device=None, conf_threshold=None,
-                   iou_threshold=None, img_size=None) -> bool:
+                   iou_threshold=None, img_size=None, validation_rules=None) -> bool:
         """
         โหลดโมเดล YOLO
 
@@ -136,6 +136,7 @@ class AppController:
             conf_threshold: Confidence threshold. If None, use settings.
             iou_threshold: IOU threshold. If None, use settings.
             img_size: Image size. If None, use settings.
+            validation_rules: Validation rules for quality inspection. If None, no validation.
 
         Returns:
             bool: True if loaded successfully
@@ -161,7 +162,8 @@ class AppController:
                 device=device,
                 conf_threshold=conf_threshold,
                 iou_threshold=iou_threshold,
-                img_size=img_size
+                img_size=img_size,
+                validation_rules=validation_rules
             )
 
         except Exception as e:

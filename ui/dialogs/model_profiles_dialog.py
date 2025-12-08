@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 import os
+from .validation_rules_dialog import ValidationRulesDialog
 
 
 class ModelProfilesDialog(QDialog):
@@ -19,6 +20,7 @@ class ModelProfilesDialog(QDialog):
         self.settings = settings
         self.modified = False
         self.selected_profile = None  # Store selected profile for loading
+        self.current_validation_rules = None  # Store validation rules for current profile
         self.setup_ui()
         self.load_profiles()
 
@@ -219,6 +221,23 @@ class ModelProfilesDialog(QDialog):
         device_group.setLayout(device_layout)
         right_layout.addWidget(device_group)
 
+        # Validation Rules settings
+        validation_group = QGroupBox("เงื่อนไขการตรวจสอบคุณภาพ")
+        validation_layout = QVBoxLayout()
+
+        # Info label
+        self.validation_info_label = QLabel("ยังไม่ได้กำหนดเงื่อนไข")
+        self.validation_info_label.setStyleSheet("color: #888; font-size: 11px;")
+        validation_layout.addWidget(self.validation_info_label)
+
+        # Configure button
+        self.configure_validation_btn = QPushButton("⚙️ กำหนดเงื่อนไขการตรวจสอบ")
+        self.configure_validation_btn.clicked.connect(self.on_configure_validation)
+        validation_layout.addWidget(self.configure_validation_btn)
+
+        validation_group.setLayout(validation_layout)
+        right_layout.addWidget(validation_group)
+
         # Save button
         self.save_profile_btn = QPushButton("💾 บันทึก Profile นี้")
         self.save_profile_btn.clicked.connect(self.on_save_profile)
@@ -295,6 +314,10 @@ class ModelProfilesDialog(QDialog):
         # Set device
         self.device_combo.setCurrentText(profile_data.get("device", "cpu"))
 
+        # Load validation rules
+        self.current_validation_rules = profile_data.get("validation_rules", None)
+        self.update_validation_info()
+
     def on_profile_modified(self):
         """เมื่อแก้ไข profile"""
         self.save_profile_btn.setEnabled(True)
@@ -360,6 +383,10 @@ class ModelProfilesDialog(QDialog):
         self.device_combo.setCurrentText("cpu")
         self.file_status_label.setText("")
 
+        # Clear validation rules
+        self.current_validation_rules = None
+        self.update_validation_info()
+
         self.name_edit.setFocus()
         self.save_profile_btn.setEnabled(True)
 
@@ -406,6 +433,10 @@ class ModelProfilesDialog(QDialog):
             "iou_threshold": self.iou_spin.value(),
             "img_size": int(self.img_size_combo.currentText())
         }
+
+        # Add validation rules if configured
+        if self.current_validation_rules is not None:
+            profile_data["validation_rules"] = self.current_validation_rules
 
         # Save to settings
         profiles = self.settings.get("model_profiles", {})
@@ -492,8 +523,33 @@ class ModelProfilesDialog(QDialog):
             "device": profile_data.get("device", "cpu"),
             "confidence_threshold": profile_data.get("confidence_threshold", 0.5),
             "iou_threshold": profile_data.get("iou_threshold", 0.45),
-            "img_size": profile_data.get("img_size", 640)
+            "img_size": profile_data.get("img_size", 640),
+            "validation_rules": profile_data.get("validation_rules", None)
         }
 
         # Close dialog and return Accepted
         self.accept()
+
+    def on_configure_validation(self):
+        """เปิด dialog กำหนดเงื่อนไขการตรวจสอบ"""
+        dialog = ValidationRulesDialog(self.current_validation_rules, parent=self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.current_validation_rules = dialog.get_validation_rules()
+            self.update_validation_info()
+            self.on_profile_modified()
+
+    def update_validation_info(self):
+        """อัพเดทข้อมูลการแสดงผล validation rules"""
+        if self.current_validation_rules is None or not self.current_validation_rules.get("enabled", False):
+            self.validation_info_label.setText("ยังไม่ได้กำหนดเงื่อนไข")
+            self.validation_info_label.setStyleSheet("color: #888; font-size: 11px;")
+        else:
+            rules = self.current_validation_rules.get("rules", [])
+            num_rules = len(rules)
+            pass_condition = self.current_validation_rules.get("pass_condition", "all")
+            pass_text = "ทุกเงื่อนไข" if pass_condition == "all" else "เงื่อนไขใดเงื่อนไขหนึ่ง"
+
+            self.validation_info_label.setText(
+                f"✓ กำหนดแล้ว: {num_rules} เงื่อนไข ({pass_text}ต้องผ่าน)"
+            )
+            self.validation_info_label.setStyleSheet("color: #4CAF50; font-size: 11px; font-weight: bold;")

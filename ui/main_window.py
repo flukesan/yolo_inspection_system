@@ -16,6 +16,7 @@ from .widgets.camera_view import CameraView
 from .widgets.control_panel import ControlPanel
 from .widgets.statistics_panel import StatisticsPanel
 from .widgets.alert_panel import AlertPanel
+from .widgets.validation_result_panel import ValidationResultPanel
 from .dialogs.camera_profiles_dialog import CameraProfilesDialog
 from .dialogs.model_profiles_dialog import ModelProfilesDialog
 from .dialogs.snapshot_training_settings_dialog import SnapshotTrainingSettingsDialog
@@ -62,9 +63,11 @@ class MainWindow(QMainWindow):
 
         self.control_panel = ControlPanel()
         self.statistics_panel = StatisticsPanel()
+        self.validation_result_panel = ValidationResultPanel()
 
         right_layout.addWidget(self.control_panel, stretch=1)
         right_layout.addWidget(self.statistics_panel, stretch=1)
+        right_layout.addWidget(self.validation_result_panel, stretch=1)
 
         # Add to main layout
         main_layout.addLayout(left_layout, stretch=3)
@@ -502,6 +505,10 @@ class MainWindow(QMainWindow):
                 if result['annotated_image'] is not None:
                     self.camera_view.display_result(result['annotated_image'])
 
+                # Update validation result panel
+                if 'validation_result' in result:
+                    self.validation_result_panel.update_validation_result(result['validation_result'])
+
                 # Log result
                 if result['status'] == 'NG':
                     defect_info = f"{result['num_defects']} defects detected"
@@ -582,7 +589,8 @@ class MainWindow(QMainWindow):
                 device=profile['device'],
                 conf_threshold=profile['confidence_threshold'],
                 iou_threshold=profile['iou_threshold'],
-                img_size=profile['img_size']
+                img_size=profile['img_size'],
+                validation_rules=profile.get('validation_rules', None)
             )
 
             if success:

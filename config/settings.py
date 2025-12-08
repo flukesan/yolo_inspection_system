@@ -50,7 +50,17 @@ class Settings:
             #     "device": "cpu" or "cuda",
             #     "confidence_threshold": 0.5,
             #     "iou_threshold": 0.45,
-            #     "img_size": 640
+            #     "img_size": 640,
+            #     "validation_rules": {
+            #         "enabled": True,
+            #         "pass_condition": "all",  # "all" or "any"
+            #         "rules": [
+            #             {"type": "count_exact", "class_name": "A1", "expected": 5},
+            #             {"type": "count_exact", "class_name": "B1", "expected": 5},
+            #             {"type": "presence_check", "class_name": "defect", "must_exist": False},
+            #             {"type": "position_check", "class_name": "A1", "zone": {"x": 0, "y": 0, "width": 100, "height": 100}}
+            #         ]
+            #     }
             # }
         },
 

@@ -99,6 +99,12 @@ class InspectionEngine:
             detections = self.yolo_detector.detect(frame)
             detection_time = (time.time() - start_time) * 1000  # ms
 
+            # Get validation rules from yolo_detector if available
+            validation_rules = getattr(self.yolo_detector, 'validation_rules', None)
+
+            # Perform validation if rules are enabled
+            validation_result = self.validate_detections(detections, validation_rules)
+
             # Analyze results based on model type
             model_type = self.yolo_detector.model_type
 
@@ -110,20 +116,27 @@ class InspectionEngine:
                 # Only count if there are detections (objects in frame)
                 should_count = len(detections) > 0
 
-            if model_type == 'classification':
-                # For classification: check if detected class is "defect" class
-                has_defect = False
-                if len(detections) > 0:
-                    # Check if class name indicates defect
-                    class_name = detections[0]['class_name'].lower()
-                    # Classes that indicate defect/NG
-                    defect_classes = ['defect', 'bad', 'ng', 'fail', 'scratch', 'crack', 'dent']
-                    has_defect = any(defect in class_name for defect in defect_classes)
+            # Determine Pass/Fail status
+            if validation_result['enabled']:
+                # If validation is enabled, use validation result
+                has_defect = not validation_result['pass']
+                result_status = "OK" if validation_result['pass'] else "NG"
             else:
-                # For detection/segmentation/pose: any detection means defect
-                has_defect = len(detections) > 0
+                # Otherwise, use default logic
+                if model_type == 'classification':
+                    # For classification: check if detected class is "defect" class
+                    has_defect = False
+                    if len(detections) > 0:
+                        # Check if class name indicates defect
+                        class_name = detections[0]['class_name'].lower()
+                        # Classes that indicate defect/NG
+                        defect_classes = ['defect', 'bad', 'ng', 'fail', 'scratch', 'crack', 'dent']
+                        has_defect = any(defect in class_name for defect in defect_classes)
+                else:
+                    # For detection/segmentation/pose: any detection means defect
+                    has_defect = len(detections) > 0
 
-            result_status = "NG" if has_defect else "OK"
+                result_status = "NG" if has_defect else "OK"
 
             # Create inspection result
             timestamp_obj = datetime.now()
@@ -136,7 +149,8 @@ class InspectionEngine:
                 'detection_time_ms': round(detection_time, 2),
                 'image': frame,
                 'annotated_image': None,
-                'should_count': should_count  # Flag to indicate if this should be counted in stats
+                'should_count': should_count,  # Flag to indicate if this should be counted in stats
+                'validation_result': validation_result  # Validation result
             }
 
             # Prepare overlay information
@@ -285,3 +299,150 @@ class InspectionEngine:
     def set_data_logger(self, data_logger) -> None:
         """ตั้งค่า DataLogger"""
         self.data_logger = data_logger
+
+    def validate_detections(self, detections: List[Dict], validation_rules: Dict) -> Dict[str, Any]:
+        """
+        ตรวจสอบ detections ตามเงื่อนไขที่กำหนด
+
+        Args:
+            detections: List of detection results
+            validation_rules: Validation rules from model profile
+
+        Returns:
+            {
+                'enabled': True/False,
+                'pass': True/False,
+                'pass_condition': 'all'/'any',
+                'rules_results': [
+                    {
+                        'type': 'count_exact',
+                        'class_name': 'A1',
+                        'expected': 5,
+                        'actual': 5,
+                        'pass': True
+                    },
+                    ...
+                ]
+            }
+        """
+        if validation_rules is None or not validation_rules.get("enabled", False):
+            return {
+                'enabled': False,
+                'pass': None,
+                'pass_condition': None,
+                'rules_results': []
+            }
+
+        # Count detections by class
+        class_counts = {}
+        class_positions = {}  # Store bounding box centers
+
+        for det in detections:
+            class_name = det['class_name']
+            class_counts[class_name] = class_counts.get(class_name, 0) + 1
+
+            # Calculate center of bounding box for position checks
+            bbox = det.get('bbox', [])
+            if len(bbox) >= 4:
+                x1, y1, x2, y2 = bbox[:4]
+                center_x = (x1 + x2) / 2
+                center_y = (y1 + y2) / 2
+
+                if class_name not in class_positions:
+                    class_positions[class_name] = []
+                class_positions[class_name].append((center_x, center_y))
+
+        # Check each rule
+        rules = validation_rules.get('rules', [])
+        pass_condition = validation_rules.get('pass_condition', 'all')
+        rules_results = []
+        passes = []
+
+        for rule in rules:
+            rule_type = rule.get('type', '')
+            class_name = rule.get('class_name', '')
+
+            if rule_type == 'count_exact':
+                # Count exact: จำนวนต้องเท่ากับที่กำหนด
+                expected = rule.get('expected', 0)
+                actual = class_counts.get(class_name, 0)
+                is_pass = (actual == expected)
+
+                rules_results.append({
+                    'type': 'count_exact',
+                    'class_name': class_name,
+                    'expected': expected,
+                    'actual': actual,
+                    'pass': is_pass,
+                    'message': f"{class_name}: {actual}/{expected}"
+                })
+                passes.append(is_pass)
+
+            elif rule_type == 'presence_check':
+                # Presence check: มีหรือไม่มี
+                must_exist = rule.get('must_exist', True)
+                actual = class_counts.get(class_name, 0)
+                exists = actual > 0
+
+                if must_exist:
+                    is_pass = exists
+                    message = f"{class_name}: {'พบ' if exists else 'ไม่พบ'} (ต้องมี)"
+                else:
+                    is_pass = not exists
+                    message = f"{class_name}: {'พบ' if exists else 'ไม่พบ'} (ต้องไม่มี)"
+
+                rules_results.append({
+                    'type': 'presence_check',
+                    'class_name': class_name,
+                    'must_exist': must_exist,
+                    'exists': exists,
+                    'pass': is_pass,
+                    'message': message
+                })
+                passes.append(is_pass)
+
+            elif rule_type == 'position_check':
+                # Position check: ตรวจสอบตำแหน่ง
+                zone = rule.get('zone', {})
+                zone_x = zone.get('x', 0)
+                zone_y = zone.get('y', 0)
+                zone_w = zone.get('width', 100)
+                zone_h = zone.get('height', 100)
+
+                positions = class_positions.get(class_name, [])
+                in_zone_count = 0
+
+                for pos_x, pos_y in positions:
+                    # Check if position is inside zone
+                    if (zone_x <= pos_x <= zone_x + zone_w and
+                        zone_y <= pos_y <= zone_y + zone_h):
+                        in_zone_count += 1
+
+                total_count = len(positions)
+                is_pass = (in_zone_count == total_count and total_count > 0)
+
+                rules_results.append({
+                    'type': 'position_check',
+                    'class_name': class_name,
+                    'zone': zone,
+                    'in_zone': in_zone_count,
+                    'total': total_count,
+                    'pass': is_pass,
+                    'message': f"{class_name}: {in_zone_count}/{total_count} ในโซน"
+                })
+                passes.append(is_pass)
+
+        # Determine overall pass based on pass_condition
+        if len(passes) == 0:
+            overall_pass = True  # No rules = pass
+        elif pass_condition == 'all':
+            overall_pass = all(passes)
+        else:  # 'any'
+            overall_pass = any(passes)
+
+        return {
+            'enabled': True,
+            'pass': overall_pass,
+            'pass_condition': pass_condition,
+            'rules_results': rules_results
+        }

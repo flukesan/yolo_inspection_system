@@ -26,6 +26,7 @@ class YOLODetector:
         self.conf_threshold = 0.5
         self.iou_threshold = 0.45
         self.img_size = 640
+        self.validation_rules = None  # Validation rules for quality inspection
 
         # Statistics
         self.total_detections = 0
@@ -34,7 +35,8 @@ class YOLODetector:
 
     def load_model(self, model_type: str = 'detection', model_path: str = '',
                    device: str = 'cpu', conf_threshold: float = 0.5,
-                   iou_threshold: float = 0.45, img_size: int = 640) -> bool:
+                   iou_threshold: float = 0.45, img_size: int = 640,
+                   validation_rules: Dict = None) -> bool:
         """
         โหลดโมเดล YOLO
 
@@ -45,6 +47,7 @@ class YOLODetector:
             conf_threshold: Confidence threshold
             iou_threshold: IoU threshold for NMS
             img_size: Input image size
+            validation_rules: Validation rules for quality inspection
 
         Returns:
             True if successful
@@ -68,6 +71,7 @@ class YOLODetector:
             self.conf_threshold = conf_threshold
             self.iou_threshold = iou_threshold
             self.img_size = img_size
+            self.validation_rules = validation_rules
 
             # Get class names
             if hasattr(self.model, 'names'):
