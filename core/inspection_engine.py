@@ -46,6 +46,10 @@ class InspectionEngine:
         self.on_inspection_complete: Optional[Callable] = None
         self.on_defect_detected: Optional[Callable] = None
 
+        # MQTT Communication
+        self.mqtt_client = None
+        self.mqtt_topic = "yolo/inspection"
+
     def start(self) -> None:
         """เริ่มการตรวจสอบ"""
         self.is_running = True
@@ -190,6 +194,10 @@ class InspectionEngine:
 
                 if should_save:
                     self._save_result(inspection_result)
+
+            # Publish to MQTT (if enabled)
+            if self.mqtt_client and self.mqtt_client.is_connected() and should_count:
+                self._publish_mqtt(inspection_result)
 
             # Trigger callbacks
             if self.on_inspection_complete:
@@ -456,3 +464,37 @@ class InspectionEngine:
             'pass_condition': pass_condition,
             'rules_results': rules_results
         }
+
+    def _publish_mqtt(self, result: Dict[str, Any]) -> None:
+        """
+        Publish ผลการตรวจสอบไปยัง MQTT Broker
+
+        Args:
+            result: Inspection result dictionary
+        """
+        if self.mqtt_client is None:
+            return
+
+        try:
+            # Get model name
+            model_name = "Unknown"
+            if self.yolo_detector and self.yolo_detector.model_path:
+                import os
+                model_name = os.path.splitext(os.path.basename(self.yolo_detector.model_path))[0]
+
+            # Get status
+            status = result['status']
+
+            # Get detections
+            detections = result['detections']
+
+            # Publish
+            self.mqtt_client.publish_inspection_result(
+                model_name=model_name,
+                status=status,
+                defects=detections,
+                topic=self.mqtt_topic
+            )
+
+        except Exception as e:
+            print(f"✗ Error publishing to MQTT: {e}")

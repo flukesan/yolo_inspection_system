@@ -15,7 +15,7 @@ from PyQt6.QtCore import Qt
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from config import Settings
-from core import CameraManager, YOLODetector, InspectionEngine, DataLogger
+from core import CameraManager, YOLODetector, InspectionEngine, DataLogger, MQTTClient
 from utils import Database, ImageProcessor, PLCCommunication, ReportGenerator
 from ui import MainWindow
 
@@ -82,6 +82,29 @@ class AppController:
                 unit_id=self.settings.get('plc.unit_id')
             )
             self.plc.connect()
+
+        # MQTT Communication (optional)
+        self.mqtt_client = None
+        if self.settings.get('mqtt.enabled', False):
+            print("[Optional] เชื่อมต่อ MQTT Broker...")
+            client_id = None
+            if self.settings.get('mqtt.client_id_type') == 'custom':
+                client_id = self.settings.get('mqtt.client_id')
+
+            self.mqtt_client = MQTTClient(
+                broker_host=self.settings.get('mqtt.broker_host'),
+                port=self.settings.get('mqtt.port', 1883),
+                client_id=client_id,
+                username=self.settings.get('mqtt.username') or None,
+                password=self.settings.get('mqtt.password') or None,
+                timeout=self.settings.get('mqtt.timeout', 3),
+                heartbeat_interval=self.settings.get('mqtt.heartbeat_interval', 60)
+            )
+            self.mqtt_client.connect()
+
+            # Set MQTT client to inspection engine
+            self.inspection_engine.mqtt_client = self.mqtt_client
+            self.inspection_engine.mqtt_topic = self.settings.get('mqtt.topic', 'yolo/inspection')
 
         print("\n✓ เริ่มต้นระบบสำเร็จ!\n")
 

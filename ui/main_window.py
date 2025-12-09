@@ -20,6 +20,7 @@ from .widgets.validation_result_panel import ValidationResultPanel
 from .dialogs.camera_profiles_dialog import CameraProfilesDialog
 from .dialogs.model_profiles_dialog import ModelProfilesDialog
 from .dialogs.snapshot_training_settings_dialog import SnapshotTrainingSettingsDialog
+from .dialogs.mqtt_settings_dialog import MQTTSettingsDialog
 
 
 class MainWindow(QMainWindow):
@@ -125,6 +126,10 @@ class MainWindow(QMainWindow):
         snapshot_training_settings_action = QAction("📚 ตั้งค่า Snapshot Training...", self)
         snapshot_training_settings_action.triggered.connect(self.on_snapshot_training_settings)
         tools_menu.addAction(snapshot_training_settings_action)
+
+        mqtt_settings_action = QAction("📡 ตั้งค่า MQTT Connection...", self)
+        mqtt_settings_action.triggered.connect(self.on_mqtt_settings)
+        tools_menu.addAction(mqtt_settings_action)
 
         tools_menu.addSeparator()
 
@@ -494,6 +499,52 @@ class MainWindow(QMainWindow):
 
             if result:
                 self.alert_panel.add_success("✓ บันทึกการตั้งค่า Snapshot Training เรียบร้อย")
+
+    def on_mqtt_settings(self):
+        """เปิด dialog ตั้งค่า MQTT Connection"""
+        if self.app_controller and hasattr(self.app_controller, 'settings'):
+            mqtt_client = getattr(self.app_controller, 'mqtt_client', None)
+            dialog = MQTTSettingsDialog(self.app_controller.settings, mqtt_client, self)
+            result = dialog.exec()
+
+            if result:
+                # Reload MQTT settings and reconnect if needed
+                mqtt_settings = self.app_controller.settings.get('mqtt', {})
+                if mqtt_settings.get('enabled', False):
+                    # Disconnect existing client if any
+                    if mqtt_client:
+                        mqtt_client.disconnect()
+
+                    # Create new MQTT client
+                    from core.mqtt_client import MQTTClient
+                    client_id = None
+                    if mqtt_settings.get('client_id_type') == 'custom':
+                        client_id = mqtt_settings.get('client_id')
+
+                    self.app_controller.mqtt_client = MQTTClient(
+                        broker_host=mqtt_settings.get('broker_host'),
+                        port=mqtt_settings.get('port', 1883),
+                        client_id=client_id,
+                        username=mqtt_settings.get('username') or None,
+                        password=mqtt_settings.get('password') or None,
+                        timeout=mqtt_settings.get('timeout', 3),
+                        heartbeat_interval=mqtt_settings.get('heartbeat_interval', 60)
+                    )
+
+                    if self.app_controller.mqtt_client.connect():
+                        # Update inspection engine
+                        self.app_controller.inspection_engine.mqtt_client = self.app_controller.mqtt_client
+                        self.app_controller.inspection_engine.mqtt_topic = mqtt_settings.get('topic', 'yolo/inspection')
+                        self.alert_panel.add_success("✓ เชื่อมต่อ MQTT Broker สำเร็จ")
+                    else:
+                        self.alert_panel.add_error("✗ ไม่สามารถเชื่อมต่อ MQTT Broker ได้")
+                else:
+                    # Disable MQTT
+                    if mqtt_client:
+                        mqtt_client.disconnect()
+                        self.app_controller.mqtt_client = None
+                        self.app_controller.inspection_engine.mqtt_client = None
+                    self.alert_panel.add_info("MQTT Connection ถูกปิดใช้งาน")
 
     def run_inspection(self):
         """รันการตรวจสอบ 1 รอบ"""

@@ -92,6 +92,20 @@ class Settings:
             "result_address": 1
         },
 
+        # MQTT Communication Settings (DeviceWise)
+        "mqtt": {
+            "enabled": False,
+            "broker_host": "localhost",
+            "port": 1883,
+            "timeout": 3,
+            "username": "",
+            "password": "",
+            "heartbeat_interval": 60,
+            "topic": "yolo/inspection",
+            "client_id_type": "mac",  # "mac" or "custom"
+            "client_id": None  # Custom client ID (if client_id_type is "custom")
+        },
+
         # Report Settings
         "report": {
             "output_path": "reports/",
