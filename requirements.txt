@@ -17,6 +17,7 @@ pyqtgraph>=0.13.0
 
 # Communication
 pymodbus>=3.5.0  # PLC Communication
+paho-mqtt>=2.0.0  # MQTT Communication (DeviceWise)
 requests>=2.31.0
 
 # Data Processing & Reporting
