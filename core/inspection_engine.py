@@ -29,7 +29,8 @@ class InspectionEngine:
         self.is_running = False
         self.is_paused = False
         self.auto_save = True
-        self.save_defect_only = True
+        self.save_ok_images = True  # บันทึกรูป OK
+        self.save_ng_images = True  # บันทึกรูป NG
         self.alert_on_defect = True
 
         # Statistics
@@ -180,7 +181,14 @@ class InspectionEngine:
 
             # Save to database
             if self.auto_save:
-                if not self.save_defect_only or has_defect:
+                # Determine if we should save based on status and settings
+                should_save = False
+                if result_status == "OK" and self.save_ok_images:
+                    should_save = True
+                elif result_status == "NG" and self.save_ng_images:
+                    should_save = True
+
+                if should_save:
                     self._save_result(inspection_result)
 
             # Trigger callbacks
@@ -227,12 +235,14 @@ class InspectionEngine:
                 'detections': result['detections']
             }
 
-            # Save image if has defect
+            # Save image (both OK and NG, separated by folder)
             image_path = None
-            if result['has_defect'] and result['annotated_image'] is not None:
+            if result['annotated_image'] is not None:
+                status = result['status']  # "OK" or "NG"
                 image_path = self.data_logger.save_image(
                     result['annotated_image'],
-                    result['timestamp']
+                    result['timestamp'],
+                    status=status
                 )
                 log_data['image_path'] = image_path
 

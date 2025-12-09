@@ -67,7 +67,9 @@ class Settings:
         # Inspection Settings
         "inspection": {
             "auto_save": True,
-            "save_defect_only": True,
+            "save_ok_images": True,  # บันทึกรูป OK
+            "save_ng_images": True,  # บันทึกรูป NG
+            "save_defect_only": False,  # Deprecated: ใช้ save_ok_images และ save_ng_images แทน
             "inspection_interval": 0.1,  # วินาที
             "alert_on_defect": True,
             "alert_sound": True

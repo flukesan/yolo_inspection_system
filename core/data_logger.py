@@ -23,9 +23,10 @@ class DataLogger:
         self.db_manager = db_manager
         self.output_dir = output_dir
 
-        # Create output directory
+        # Create output directory structure
         os.makedirs(output_dir, exist_ok=True)
-        os.makedirs(os.path.join(output_dir, "images"), exist_ok=True)
+        os.makedirs(os.path.join(output_dir, "images", "OK"), exist_ok=True)
+        os.makedirs(os.path.join(output_dir, "images", "NG"), exist_ok=True)
         os.makedirs(os.path.join(output_dir, "json"), exist_ok=True)
 
         # Statistics
@@ -58,22 +59,30 @@ class DataLogger:
             print(f"✗ Error logging inspection: {e}")
             return False
 
-    def save_image(self, image, timestamp: datetime, prefix: str = "defect") -> str:
+    def save_image(self, image, timestamp: datetime, status: str = "NG", prefix: str = None) -> str:
         """
-        บันทึกภาพ
+        บันทึกภาพ (แยก folder ตาม status OK/NG)
 
         Args:
             image: Image to save
             timestamp: Timestamp
-            prefix: Filename prefix
+            status: Inspection status ("OK" or "NG")
+            prefix: Filename prefix (if None, use status)
 
         Returns:
             Path to saved image
         """
         try:
+            # Determine folder based on status
+            folder = "OK" if status == "OK" else "NG"
+
+            # Use status as prefix if not specified
+            if prefix is None:
+                prefix = status.lower()
+
             # Generate filename
             filename = f"{prefix}_{timestamp.strftime('%Y%m%d_%H%M%S_%f')}.jpg"
-            filepath = os.path.join(self.output_dir, "images", filename)
+            filepath = os.path.join(self.output_dir, "images", folder, filename)
 
             # Save image
             cv2.imwrite(filepath, image)

@@ -59,6 +59,12 @@ class AppController:
             data_logger=self.data_logger
         )
 
+        # Load inspection settings
+        self.inspection_engine.auto_save = self.settings.get('inspection.auto_save', True)
+        self.inspection_engine.save_ok_images = self.settings.get('inspection.save_ok_images', True)
+        self.inspection_engine.save_ng_images = self.settings.get('inspection.save_ng_images', True)
+        self.inspection_engine.alert_on_defect = self.settings.get('inspection.alert_on_defect', True)
+
         # Initialize utilities
         print("[7/7] สร้าง Report Generator...")
         self.report_generator = ReportGenerator(
