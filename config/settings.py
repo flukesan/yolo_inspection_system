@@ -13,22 +13,30 @@ class Settings:
     DEFAULT_SETTINGS = {
         # Camera Settings
         "camera": {
+            "type": "usb",  # "usb", "rtsp", "ip", "gige"
             "default_source": 0,
             "width": 1280,
             "height": 720,
             "fps": 30,
             "rtsp_url": "",
-            "default_profile": None  # Default camera profile name
+            "exposure": 0,  # 0 = auto, >0 = manual (microseconds for GigE)
+            "gain": 0,  # 0 = auto, >0 = manual
+            "default_profile": None,  # Default camera profile name
+            # GigE Vision specific settings
+            "gentl_path": "",  # Path to GenTL producer (.cti file)
+            "camera_id": 0  # Camera index, serial number, or IP
         },
 
         # Camera Profiles (บันทึก camera settings ที่ใช้บ่อย)
         "camera_profiles": {
             # "Camera Name": {
-            #     "type": "usb" or "rtsp",
-            #     "source": 0 or "rtsp://...",
+            #     "type": "usb" | "rtsp" | "ip" | "gige",
+            #     "source": 0 or "rtsp://..." or {"gentl_path": "...", "camera_id": 0},
             #     "width": 1280,
             #     "height": 720,
-            #     "fps": 30
+            #     "fps": 30,
+            #     "exposure": 0,  # Optional: exposure time (microseconds for GigE)
+            #     "gain": 0  # Optional: camera gain
             # }
         },
 

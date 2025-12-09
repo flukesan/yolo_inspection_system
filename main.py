@@ -108,23 +108,25 @@ class AppController:
 
         print("\n✓ เริ่มต้นระบบสำเร็จ!\n")
 
-    def connect_camera(self, source=None, width=None, height=None, fps=None) -> bool:
+    def connect_camera(self, camera_type=None, source=None, width=None, height=None, fps=None, **kwargs) -> bool:
         """
         เชื่อมต่อกล้อง
 
         Args:
-            source: Camera source (index or RTSP URL). If None, use settings.
+            camera_type: Camera type ("usb", "rtsp", "ip", "gige"). If None, use settings.
+            source: Camera source (index, URL, or dict for GigE). If None, use settings.
             width: Frame width. If None, use settings.
             height: Frame height. If None, use settings.
             fps: Frame rate. If None, use settings.
+            **kwargs: Additional camera parameters (exposure, gain, etc.)
 
         Returns:
             bool: True if connected successfully
         """
         try:
             # Use provided parameters or fall back to settings
-            if source is None:
-                source = self.settings.get('camera.default_source', 0)
+            if camera_type is None:
+                camera_type = self.settings.get('camera.type', 'usb')
             if width is None:
                 width = self.settings.get('camera.width', 1280)
             if height is None:
@@ -132,10 +134,44 @@ class AppController:
             if fps is None:
                 fps = self.settings.get('camera.fps', 30)
 
-            return self.camera_manager.connect(source, width, height, fps)
+            # Build source based on camera type
+            if source is None:
+                if camera_type == 'gige':
+                    # For GigE, source is a dict with gentl_path and camera_id
+                    gentl_path = self.settings.get('camera.gentl_path', '')
+                    camera_id = self.settings.get('camera.camera_id', 0)
+                    if gentl_path:
+                        source = {
+                            'gentl_path': gentl_path,
+                            'camera_id': camera_id
+                        }
+                    else:
+                        print("✗ GigE Vision: ต้องระบุ GenTL Producer path ใน settings")
+                        return False
+                else:
+                    # For USB/RTSP/IP, use default_source
+                    source = self.settings.get('camera.default_source', 0)
+
+            # Get camera parameters from settings if not provided
+            if 'exposure' not in kwargs:
+                exposure = self.settings.get('camera.exposure', 0)
+                if exposure > 0:
+                    if camera_type == 'gige':
+                        kwargs['exposure_time'] = exposure
+                    else:
+                        kwargs['exposure'] = exposure
+
+            if 'gain' not in kwargs:
+                gain = self.settings.get('camera.gain', 0)
+                if gain > 0:
+                    kwargs['gain'] = gain
+
+            return self.camera_manager.connect(camera_type, source, width, height, fps, **kwargs)
 
         except Exception as e:
             print(f"✗ Error connecting camera: {e}")
+            import traceback
+            traceback.print_exc()
             return False
 
     def disconnect_camera(self) -> bool:

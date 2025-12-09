@@ -20,6 +20,10 @@ pymodbus>=3.5.0  # PLC Communication
 paho-mqtt>=2.0.0  # MQTT Communication (DeviceWise)
 requests>=2.31.0
 
+# Industrial Cameras
+harvesters>=1.4.0  # GigE Vision Camera Support
+genicam>=1.5.0  # GenICam interface for industrial cameras
+
 # Data Processing & Reporting
 pandas>=2.0.0
 openpyxl>=3.1.0
