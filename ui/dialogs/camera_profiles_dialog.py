@@ -1,17 +1,17 @@
 """
 Camera Profiles Dialog - จัดการ Camera Profiles
-Manage camera profiles (USB and RTSP)
+Manage camera profiles (USB, RTSP/IP, and GigE Vision)
 """
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
                              QPushButton, QListWidget, QListWidgetItem,
                              QGroupBox, QLineEdit, QComboBox, QSpinBox,
-                             QMessageBox, QInputDialog)
+                             QMessageBox, QInputDialog, QFileDialog, QTextEdit)
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 
 
 class CameraProfilesDialog(QDialog):
-    """Dialog สำหรับจัดการ Camera Profiles"""
+    """Dialog สำหรับจัดการ Camera Profiles (รองรับ USB/RTSP/IP/GigE Vision)"""
 
     def __init__(self, settings, parent=None):
         super().__init__(parent)
@@ -24,7 +24,7 @@ class CameraProfilesDialog(QDialog):
     def setup_ui(self):
         """สร้าง UI"""
         self.setWindowTitle("จัดการ Camera Profiles")
-        self.setMinimumSize(800, 600)
+        self.setMinimumSize(900, 700)
 
         layout = QVBoxLayout()
 
@@ -110,7 +110,7 @@ class CameraProfilesDialog(QDialog):
         type_layout = QHBoxLayout()
         type_layout.addWidget(QLabel("ประเภท:"))
         self.type_combo = QComboBox()
-        self.type_combo.addItems(["USB Camera", "RTSP/IP Camera"])
+        self.type_combo.addItems(["USB Camera", "RTSP/IP Camera", "GigE Vision"])
         self.type_combo.currentTextChanged.connect(self.on_type_changed)
         type_layout.addWidget(self.type_combo)
         right_layout.addLayout(type_layout)
@@ -155,6 +155,42 @@ class CameraProfilesDialog(QDialog):
         self.rtsp_group.setLayout(rtsp_layout)
         right_layout.addWidget(self.rtsp_group)
 
+        # GigE Vision settings
+        self.gige_group = QGroupBox("การตั้งค่า GigE Vision")
+        gige_layout = QVBoxLayout()
+
+        # GenTL Producer
+        gentl_layout = QVBoxLayout()
+        gentl_layout.addWidget(QLabel("GenTL Producer (.cti):"))
+        gentl_input_layout = QHBoxLayout()
+        self.gige_gentl_edit = QLineEdit()
+        self.gige_gentl_edit.setPlaceholderText("/opt/pylon/lib/gentlproducer.cti")
+        self.gige_gentl_edit.textChanged.connect(self.on_profile_modified)
+        gentl_input_layout.addWidget(self.gige_gentl_edit)
+
+        self.gige_browse_btn = QPushButton("เลือกไฟล์...")
+        self.gige_browse_btn.clicked.connect(self.browse_gentl)
+        gentl_input_layout.addWidget(self.gige_browse_btn)
+        gentl_layout.addLayout(gentl_input_layout)
+        gige_layout.addLayout(gentl_layout)
+
+        # Camera ID
+        camera_id_layout = QHBoxLayout()
+        camera_id_layout.addWidget(QLabel("Camera ID:"))
+        self.gige_camera_id_edit = QLineEdit()
+        self.gige_camera_id_edit.setPlaceholderText("0 (index), serial number, or IP")
+        self.gige_camera_id_edit.textChanged.connect(self.on_profile_modified)
+        camera_id_layout.addWidget(self.gige_camera_id_edit)
+        gige_layout.addLayout(camera_id_layout)
+
+        # GigE Help text
+        gige_help = QLabel("💡 ต้องติดตั้ง Camera SDK (Basler Pylon, Vimba, ฯลฯ) ก่อนใช้งาน")
+        gige_help.setStyleSheet("color: #888; font-size: 10px;")
+        gige_layout.addWidget(gige_help)
+
+        self.gige_group.setLayout(gige_layout)
+        right_layout.addWidget(self.gige_group)
+
         # Resolution settings
         res_group = QGroupBox("ความละเอียด")
         res_layout = QHBoxLayout()
@@ -162,7 +198,7 @@ class CameraProfilesDialog(QDialog):
         res_layout.addWidget(QLabel("Width:"))
         self.width_spin = QSpinBox()
         self.width_spin.setMinimum(320)
-        self.width_spin.setMaximum(3840)
+        self.width_spin.setMaximum(4096)
         self.width_spin.setSingleStep(160)
         self.width_spin.setValue(1280)
         self.width_spin.valueChanged.connect(self.on_profile_modified)
@@ -171,7 +207,7 @@ class CameraProfilesDialog(QDialog):
         res_layout.addWidget(QLabel("Height:"))
         self.height_spin = QSpinBox()
         self.height_spin.setMinimum(240)
-        self.height_spin.setMaximum(2160)
+        self.height_spin.setMaximum(3072)
         self.height_spin.setSingleStep(120)
         self.height_spin.setValue(720)
         self.height_spin.valueChanged.connect(self.on_profile_modified)
@@ -187,6 +223,31 @@ class CameraProfilesDialog(QDialog):
 
         res_group.setLayout(res_layout)
         right_layout.addWidget(res_group)
+
+        # Advanced parameters
+        adv_group = QGroupBox("พารามิเตอร์ขั้นสูง (Optional)")
+        adv_layout = QHBoxLayout()
+
+        adv_layout.addWidget(QLabel("Exposure (μs):"))
+        self.exposure_spin = QSpinBox()
+        self.exposure_spin.setMinimum(0)
+        self.exposure_spin.setMaximum(100000)
+        self.exposure_spin.setValue(0)
+        self.exposure_spin.setSpecialValueText("Auto")
+        self.exposure_spin.valueChanged.connect(self.on_profile_modified)
+        adv_layout.addWidget(self.exposure_spin)
+
+        adv_layout.addWidget(QLabel("Gain:"))
+        self.gain_spin = QSpinBox()
+        self.gain_spin.setMinimum(0)
+        self.gain_spin.setMaximum(100)
+        self.gain_spin.setValue(0)
+        self.gain_spin.setSpecialValueText("Auto")
+        self.gain_spin.valueChanged.connect(self.on_profile_modified)
+        adv_layout.addWidget(self.gain_spin)
+
+        adv_group.setLayout(adv_layout)
+        right_layout.addWidget(adv_group)
 
         # Save button
         self.save_profile_btn = QPushButton("💾 บันทึก Profile นี้")
@@ -213,6 +274,17 @@ class CameraProfilesDialog(QDialog):
 
         # Update UI based on type
         self.on_type_changed(self.type_combo.currentText())
+
+    def browse_gentl(self):
+        """เปิด file dialog เพื่อเลือก GenTL producer file"""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "เลือก GenTL Producer File",
+            "",
+            "GenTL Producer (*.cti);;All Files (*)"
+        )
+        if file_path:
+            self.gige_gentl_edit.setText(file_path)
 
     def load_profiles(self):
         """โหลด profiles จาก settings"""
@@ -247,26 +319,54 @@ class CameraProfilesDialog(QDialog):
 
         # Set type
         camera_type = profile_data.get("type", "usb")
+        type_map = {
+            "usb": "USB Camera",
+            "rtsp": "RTSP/IP Camera",
+            "ip": "RTSP/IP Camera",
+            "gige": "GigE Vision"
+        }
+        display_type = type_map.get(camera_type, "USB Camera")
+        self.type_combo.setCurrentText(display_type)
+
+        # Load type-specific settings
         if camera_type == "usb":
-            self.type_combo.setCurrentText("USB Camera")
             self.usb_index_spin.setValue(int(profile_data.get("source", 0)))
-        else:
-            self.type_combo.setCurrentText("RTSP/IP Camera")
+        elif camera_type in ["rtsp", "ip"]:
             self.rtsp_url_edit.setText(profile_data.get("source", ""))
+        elif camera_type == "gige":
+            # GigE source can be dict or string
+            source = profile_data.get("source", {})
+            if isinstance(source, dict):
+                self.gige_gentl_edit.setText(source.get("gentl_path", ""))
+                self.gige_camera_id_edit.setText(str(source.get("camera_id", 0)))
+            else:
+                # Legacy format - just gentl_path
+                self.gige_gentl_edit.setText(str(source))
+                self.gige_camera_id_edit.setText("0")
 
         # Set resolution
         self.width_spin.setValue(profile_data.get("width", 1280))
         self.height_spin.setValue(profile_data.get("height", 720))
         self.fps_spin.setValue(profile_data.get("fps", 30))
 
+        # Set advanced parameters
+        self.exposure_spin.setValue(profile_data.get("exposure", 0))
+        self.gain_spin.setValue(profile_data.get("gain", 0))
+
     def on_type_changed(self, camera_type):
         """เมื่อเปลี่ยนประเภทกล้อง"""
         if camera_type == "USB Camera":
             self.usb_group.setVisible(True)
             self.rtsp_group.setVisible(False)
-        else:
+            self.gige_group.setVisible(False)
+        elif camera_type == "RTSP/IP Camera":
             self.usb_group.setVisible(False)
             self.rtsp_group.setVisible(True)
+            self.gige_group.setVisible(False)
+        elif camera_type == "GigE Vision":
+            self.usb_group.setVisible(False)
+            self.rtsp_group.setVisible(False)
+            self.gige_group.setVisible(True)
 
         self.on_profile_modified()
 
@@ -280,9 +380,13 @@ class CameraProfilesDialog(QDialog):
         self.name_edit.clear()
         self.usb_index_spin.setValue(0)
         self.rtsp_url_edit.clear()
+        self.gige_gentl_edit.clear()
+        self.gige_camera_id_edit.setText("0")
         self.width_spin.setValue(1280)
         self.height_spin.setValue(720)
         self.fps_spin.setValue(30)
+        self.exposure_spin.setValue(0)
+        self.gain_spin.setValue(0)
 
         self.name_edit.setFocus()
         self.save_profile_btn.setEnabled(True)
@@ -296,15 +400,42 @@ class CameraProfilesDialog(QDialog):
             return
 
         # Get camera type and source
-        camera_type = "usb" if self.type_combo.currentText() == "USB Camera" else "rtsp"
+        camera_type_map = {
+            "USB Camera": "usb",
+            "RTSP/IP Camera": "rtsp",
+            "GigE Vision": "gige"
+        }
+        camera_type = camera_type_map[self.type_combo.currentText()]
 
+        # Validate and get source
         if camera_type == "usb":
             source = self.usb_index_spin.value()
-        else:
+        elif camera_type == "rtsp":
             source = self.rtsp_url_edit.text().strip()
             if not source:
                 QMessageBox.warning(self, "คำเตือน", "กรุณาใส่ RTSP URL")
                 return
+        elif camera_type == "gige":
+            gentl_path = self.gige_gentl_edit.text().strip()
+            camera_id_str = self.gige_camera_id_edit.text().strip()
+
+            if not gentl_path:
+                QMessageBox.warning(self, "คำเตือน", "กรุณาเลือก GenTL Producer file (.cti)")
+                return
+
+            if not camera_id_str:
+                camera_id_str = "0"
+
+            # Parse camera_id
+            try:
+                camera_id = int(camera_id_str)
+            except ValueError:
+                camera_id = camera_id_str
+
+            source = {
+                "gentl_path": gentl_path,
+                "camera_id": camera_id
+            }
 
         # Create profile data
         profile_data = {
@@ -314,6 +445,12 @@ class CameraProfilesDialog(QDialog):
             "height": self.height_spin.value(),
             "fps": self.fps_spin.value()
         }
+
+        # Add advanced parameters if set
+        if self.exposure_spin.value() > 0:
+            profile_data["exposure"] = self.exposure_spin.value()
+        if self.gain_spin.value() > 0:
+            profile_data["gain"] = self.gain_spin.value()
 
         # Save to settings
         profiles = self.settings.get("camera_profiles", {})
@@ -399,7 +536,9 @@ class CameraProfilesDialog(QDialog):
             "source": profile_data.get("source", 0),
             "width": profile_data.get("width", 1280),
             "height": profile_data.get("height", 720),
-            "fps": profile_data.get("fps", 30)
+            "fps": profile_data.get("fps", 30),
+            "exposure": profile_data.get("exposure", 0),
+            "gain": profile_data.get("gain", 0)
         }
 
         # Close dialog and return Accepted
