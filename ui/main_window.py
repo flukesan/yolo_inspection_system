@@ -591,23 +591,51 @@ class MainWindow(QMainWindow):
             return
 
         try:
+            # Get camera type and source
+            camera_type = profile.get('type', 'usb')
+            source = profile['source']
+            width = profile['width']
+            height = profile['height']
+            fps = profile['fps']
+
+            # Prepare additional parameters
+            kwargs = {}
+
+            # Add exposure and gain if specified
+            if 'exposure' in profile and profile['exposure'] > 0:
+                if camera_type == 'gige':
+                    kwargs['exposure_time'] = profile['exposure']
+                else:
+                    kwargs['exposure'] = profile['exposure']
+
+            if 'gain' in profile and profile['gain'] > 0:
+                kwargs['gain'] = profile['gain']
+
             # Connect camera with profile settings
             success = self.app_controller.connect_camera(
-                source=profile['source'],
-                width=profile['width'],
-                height=profile['height'],
-                fps=profile['fps']
+                camera_type=camera_type,
+                source=source,
+                width=width,
+                height=height,
+                fps=fps,
+                **kwargs
             )
 
             if success:
                 self.camera_view.start(30)
-                info_str = f"({profile['width']}x{profile['height']} @ {profile['fps']}fps)"
+                info_str = f"({width}x{height} @ {fps}fps)"
                 self.control_panel.update_camera_status(True, info_str)
-                self.camera_status.setText(f"กล้อง: {profile['name']} {info_str}")
+                camera_type_display = {
+                    'usb': 'USB',
+                    'rtsp': 'RTSP',
+                    'ip': 'IP',
+                    'gige': 'GigE'
+                }.get(camera_type, camera_type.upper())
+                self.camera_status.setText(f"กล้อง: {profile['name']} ({camera_type_display}) {info_str}")
                 self.alert_panel.add_success(f"เชื่อมต่อกล้อง '{profile['name']}' สำเร็จ")
             else:
                 self.alert_panel.add_error(f"ไม่สามารถเชื่อมต่อกล้อง '{profile['name']}'")
-                QMessageBox.warning(self, "ข้อผิดพลาด", f"ไม่สามารถเชื่อมต่อกล้อง\n\nProfile: {profile['name']}\nSource: {profile['source']}")
+                QMessageBox.warning(self, "ข้อผิดพลาด", f"ไม่สามารถเชื่อมต่อกล้อง\n\nProfile: {profile['name']}\nType: {camera_type}\nSource: {source}")
         except Exception as e:
             self.alert_panel.add_error(f"Error: {str(e)}")
             QMessageBox.critical(self, "ข้อผิดพลาด", f"เกิดข้อผิดพลาด:\n{str(e)}")
