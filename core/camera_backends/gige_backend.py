@@ -93,7 +93,17 @@ class GigEBackend(BaseCameraBackend):
             self.harvester.add_file(gentl_path)
             self.harvester.update()
 
+            # Wait for device discovery to complete
+            # GigE Vision uses broadcast discovery which may take time
+            time.sleep(0.5)  # 500ms should be enough for network discovery
+
             # Check available devices
+            if len(self.harvester.device_info_list) == 0:
+                # Try one more time with longer timeout
+                print("  รอให้ device discovery เสร็จ...")
+                time.sleep(1.0)
+                self.harvester.update()
+
             if len(self.harvester.device_info_list) == 0:
                 print("✗ ไม่พบกล้อง GigE Vision")
                 print("\n💡 วิธีแก้ไข:")
