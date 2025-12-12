@@ -4,7 +4,7 @@ Dialog for configuring snapshot training mode settings
 """
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
                              QPushButton, QLineEdit, QComboBox, QFileDialog,
-                             QGroupBox, QFormLayout)
+                             QGroupBox, QFormLayout, QSpinBox)
 from PyQt6.QtCore import Qt
 
 
@@ -42,23 +42,26 @@ class SnapshotTrainingSettingsDialog(QDialog):
         img_group = QGroupBox("การตั้งค่ารูปภาพ")
         img_form = QFormLayout()
 
-        # Image size
-        self.image_size_combo = QComboBox()
-        self.image_size_combo.addItems([
-            "416x416",
-            "640x640",
-            "800x800",
-            "1024x1024",
-            "1280x1280"
-        ])
-        self.image_size_combo.setCurrentText("640x640")
+        # Image Width
+        self.width_spin = QSpinBox()
+        self.width_spin.setRange(128, 4096)
+        self.width_spin.setSingleStep(32)
+        self.width_spin.setValue(640)
+        self.width_spin.setSuffix(" px")
+        img_form.addRow("Width:", self.width_spin)
+
+        # Image Height
+        self.height_spin = QSpinBox()
+        self.height_spin.setRange(128, 4096)
+        self.height_spin.setSingleStep(32)
+        self.height_spin.setValue(640)
+        self.height_spin.setSuffix(" px")
+        img_form.addRow("Height:", self.height_spin)
 
         # File prefix
         self.file_prefix_edit = QLineEdit()
         self.file_prefix_edit.setPlaceholderText("train_image")
         self.file_prefix_edit.setText("train_image")
-
-        img_form.addRow("ขนาดรูปภาพ:", self.image_size_combo)
         img_form.addRow("ชื่อไฟล์เริ่มต้น:", self.file_prefix_edit)
 
         # Resize mode
@@ -139,12 +142,24 @@ class SnapshotTrainingSettingsDialog(QDialog):
         training_settings = self.settings.get('snapshot_training', {})
 
         output_dir = training_settings.get('output_dir', 'training_images')
-        image_size = training_settings.get('image_size', '640x640')
         file_prefix = training_settings.get('file_prefix', 'train_image')
         resize_mode = training_settings.get('resize_mode', 'crop')
 
+        # Load width and height (support legacy image_size format)
+        if 'width' in training_settings and 'height' in training_settings:
+            width = training_settings.get('width', 640)
+            height = training_settings.get('height', 640)
+        else:
+            # Legacy support: parse image_size "640x640"
+            image_size = training_settings.get('image_size', '640x640')
+            try:
+                width, height = map(int, image_size.split('x'))
+            except:
+                width, height = 640, 640
+
         self.output_dir_edit.setText(output_dir)
-        self.image_size_combo.setCurrentText(image_size)
+        self.width_spin.setValue(width)
+        self.height_spin.setValue(height)
         self.file_prefix_edit.setText(file_prefix)
 
         # Set resize mode
@@ -158,7 +173,8 @@ class SnapshotTrainingSettingsDialog(QDialog):
     def save_settings(self):
         """บันทึก settings"""
         output_dir = self.output_dir_edit.text().strip()
-        image_size = self.image_size_combo.currentText()
+        width = self.width_spin.value()
+        height = self.height_spin.value()
         file_prefix = self.file_prefix_edit.text().strip()
 
         # Get resize mode
@@ -183,7 +199,8 @@ class SnapshotTrainingSettingsDialog(QDialog):
 
         # Save to settings using set() method
         self.settings.set('snapshot_training.output_dir', output_dir)
-        self.settings.set('snapshot_training.image_size', image_size)
+        self.settings.set('snapshot_training.width', width)
+        self.settings.set('snapshot_training.height', height)
         self.settings.set('snapshot_training.file_prefix', file_prefix)
         self.settings.set('snapshot_training.resize_mode', resize_mode)
 
