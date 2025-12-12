@@ -96,22 +96,66 @@ class GigEBackend(BaseCameraBackend):
             # Check available devices
             if len(self.harvester.device_info_list) == 0:
                 print("✗ ไม่พบกล้อง GigE Vision")
+                print("\n💡 วิธีแก้ไข:")
+                print("  1. ตรวจสอบกล้องเชื่อมต่อกับ Ethernet แล้ว")
+                print("  2. ตรวจสอบ PC และกล้องอยู่ใน subnet เดียวกัน (เช่น 192.168.1.x)")
+                print("  3. ปิด Windows Firewall ชั่วคราวเพื่อทดสอบ")
+                print("  4. ใช้ Pylon Viewer/Vimba Viewer ตรวจสอบว่าเห็นกล้องหรือไม่")
                 return False
 
-            print(f"พบกล้อง {len(self.harvester.device_info_list)} ตัว:")
+            print(f"✓ พบกล้อง {len(self.harvester.device_info_list)} ตัว:")
             for idx, device_info in enumerate(self.harvester.device_info_list):
                 print(f"  [{idx}] {device_info}")
 
             # Create image acquirer
-            if isinstance(camera_id, int):
-                # Use camera index
-                if camera_id >= len(self.harvester.device_info_list):
-                    print(f"✗ Camera index {camera_id} ไม่ถูกต้อง (มีแค่ {len(self.harvester.device_info_list)} ตัว)")
-                    return False
-                self.image_acquirer = self.harvester.create(camera_id)
-            else:
-                # Use serial number or IP
-                self.image_acquirer = self.harvester.create({'serial_number': str(camera_id)})
+            try:
+                if isinstance(camera_id, int):
+                    # Use camera index
+                    if camera_id >= len(self.harvester.device_info_list):
+                        print(f"\n✗ Camera index {camera_id} ไม่ถูกต้อง (มีแค่ {len(self.harvester.device_info_list)} ตัว)")
+                        print("💡 ลองใช้ Serial Number หรือ User ID แทน")
+                        return False
+                    print(f"→ กำลังเชื่อมต่อกล้อง index {camera_id}...")
+                    self.image_acquirer = self.harvester.create(camera_id)
+                else:
+                    # Use serial number, user ID, or IP - try multiple methods
+                    camera_id_str = str(camera_id)
+                    print(f"→ กำลังค้นหากล้อง: {camera_id_str}...")
+
+                    # Try 1: Serial Number
+                    try:
+                        print(f"  ลองใช้ Serial Number...")
+                        self.image_acquirer = self.harvester.create({'serial_number': camera_id_str})
+                    except:
+                        # Try 2: User ID
+                        try:
+                            print(f"  ลองใช้ User ID...")
+                            self.image_acquirer = self.harvester.create({'user_id': camera_id_str})
+                        except:
+                            # Try 3: IP Address
+                            try:
+                                print(f"  ลองใช้ IP Address...")
+                                self.image_acquirer = self.harvester.create({'ip_address': camera_id_str})
+                            except Exception as e:
+                                print(f"\n✗ ไม่สามารถเชื่อมต่อกล้อง '{camera_id_str}'")
+                                print(f"\n💡 วิธีแก้ไข:")
+                                print(f"  กล้องที่พบ:")
+                                for idx, dev in enumerate(self.harvester.device_info_list):
+                                    print(f"    [{idx}] Serial: {getattr(dev, 'serial_number', 'N/A')}, "
+                                          f"User ID: {getattr(dev, 'user_id', 'N/A')}, "
+                                          f"IP: {getattr(dev, 'ip_address', 'N/A')}")
+                                print(f"\n  ลองใช้ค่าดังนี้ใน Camera ID:")
+                                print(f"    - Index: 0")
+                                if hasattr(self.harvester.device_info_list[0], 'serial_number'):
+                                    print(f"    - Serial Number: {self.harvester.device_info_list[0].serial_number}")
+                                if hasattr(self.harvester.device_info_list[0], 'user_id'):
+                                    print(f"    - User ID: {self.harvester.device_info_list[0].user_id}")
+                                if hasattr(self.harvester.device_info_list[0], 'ip_address'):
+                                    print(f"    - IP Address: {self.harvester.device_info_list[0].ip_address}")
+                                raise
+            except Exception as e:
+                print(f"✗ Error creating image acquirer: {e}")
+                return False
 
             # Configure camera parameters
             try:
