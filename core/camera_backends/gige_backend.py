@@ -128,41 +128,44 @@ class GigEBackend(BaseCameraBackend):
                     print(f"→ กำลังเชื่อมต่อกล้อง index {camera_id}...")
                     self.image_acquirer = self.harvester.create(camera_id)
                 else:
-                    # Use serial number, user ID, or IP - try multiple methods
+                    # Use serial number, user defined name, display name, or IP
+                    # Harvesters.create() only accepts index, so we need to search manually
                     camera_id_str = str(camera_id)
                     print(f"→ กำลังค้นหากล้อง: {camera_id_str}...")
 
-                    # Try 1: Serial Number
-                    try:
-                        print(f"  ลองใช้ Serial Number...")
-                        self.image_acquirer = self.harvester.create({'serial_number': camera_id_str})
-                    except:
-                        # Try 2: User ID
-                        try:
-                            print(f"  ลองใช้ User ID...")
-                            self.image_acquirer = self.harvester.create({'user_id': camera_id_str})
-                        except:
-                            # Try 3: IP Address
-                            try:
-                                print(f"  ลองใช้ IP Address...")
-                                self.image_acquirer = self.harvester.create({'ip_address': camera_id_str})
-                            except Exception as e:
-                                print(f"\n✗ ไม่สามารถเชื่อมต่อกล้อง '{camera_id_str}'")
-                                print(f"\n💡 วิธีแก้ไข:")
-                                print(f"  กล้องที่พบ:")
-                                for idx, dev in enumerate(self.harvester.device_info_list):
-                                    print(f"    [{idx}] Serial: {getattr(dev, 'serial_number', 'N/A')}, "
-                                          f"User ID: {getattr(dev, 'user_id', 'N/A')}, "
-                                          f"IP: {getattr(dev, 'ip_address', 'N/A')}")
-                                print(f"\n  ลองใช้ค่าดังนี้ใน Camera ID:")
-                                print(f"    - Index: 0")
-                                if hasattr(self.harvester.device_info_list[0], 'serial_number'):
-                                    print(f"    - Serial Number: {self.harvester.device_info_list[0].serial_number}")
-                                if hasattr(self.harvester.device_info_list[0], 'user_id'):
-                                    print(f"    - User ID: {self.harvester.device_info_list[0].user_id}")
-                                if hasattr(self.harvester.device_info_list[0], 'ip_address'):
-                                    print(f"    - IP Address: {self.harvester.device_info_list[0].ip_address}")
-                                raise
+                    # Search for matching camera
+                    matched_index = None
+                    for idx, dev in enumerate(self.harvester.device_info_list):
+                        # Try matching with different attributes
+                        if (str(getattr(dev, 'serial_number', '')) == camera_id_str or
+                            str(getattr(dev, 'user_defined_name', '')) == camera_id_str or
+                            str(getattr(dev, 'display_name', '')) == camera_id_str or
+                            str(getattr(dev, 'id_', '')) == camera_id_str):
+                            matched_index = idx
+                            print(f"  ✓ พบกล้องที่ตรงกัน: index {idx}")
+                            break
+
+                    if matched_index is None:
+                        print(f"\n✗ ไม่พบกล้องที่ตรงกับ '{camera_id_str}'")
+                        print(f"\n💡 กล้องที่พบในระบบ:")
+                        for idx, dev in enumerate(self.harvester.device_info_list):
+                            serial = getattr(dev, 'serial_number', 'N/A')
+                            user_name = getattr(dev, 'user_defined_name', 'N/A')
+                            display = getattr(dev, 'display_name', 'N/A')
+                            print(f"    [{idx}] Serial: {serial}, User Name: {user_name}, Display: {display}")
+                        print(f"\n  ลองใช้ค่าดังนี้ใน Camera ID:")
+                        print(f"    - Index: 0")
+                        if hasattr(self.harvester.device_info_list[0], 'serial_number'):
+                            print(f"    - Serial Number: {self.harvester.device_info_list[0].serial_number}")
+                        if hasattr(self.harvester.device_info_list[0], 'user_defined_name'):
+                            print(f"    - User Name: {self.harvester.device_info_list[0].user_defined_name}")
+                        if hasattr(self.harvester.device_info_list[0], 'display_name'):
+                            print(f"    - Display Name: {self.harvester.device_info_list[0].display_name}")
+                        return False
+
+                    # Use matched index to create image acquirer
+                    print(f"→ กำลังเชื่อมต่อกล้อง index {matched_index}...")
+                    self.image_acquirer = self.harvester.create(matched_index)
             except Exception as e:
                 print(f"✗ Error creating image acquirer: {e}")
                 return False
