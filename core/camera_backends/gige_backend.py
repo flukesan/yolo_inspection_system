@@ -172,6 +172,30 @@ class GigEBackend(BaseCameraBackend):
 
             # Configure camera parameters
             try:
+                # Try to set RGB8 pixel format for color cameras (if supported)
+                # This is more efficient than Bayer demosaicing on PC
+                try:
+                    node_map = self.image_acquirer.remote_device.node_map
+                    if hasattr(node_map, 'PixelFormat'):
+                        available_formats = []
+                        try:
+                            # Try to get available pixel formats
+                            if hasattr(node_map.PixelFormat, 'symbolics'):
+                                available_formats = node_map.PixelFormat.symbolics
+                        except:
+                            pass
+
+                        # Prefer RGB8 or BGR8 over Bayer for color cameras
+                        preferred_formats = ['RGB8', 'BGR8', 'RGB8Packed', 'BGR8Packed']
+                        for fmt in preferred_formats:
+                            if fmt in available_formats:
+                                node_map.PixelFormat.value = fmt
+                                print(f"  ✓ ตั้งค่า Pixel Format: {fmt}")
+                                break
+                except Exception as e:
+                    # If setting pixel format fails, use camera default (probably Bayer)
+                    pass
+
                 # Set Width/Height if supported
                 if self.image_acquirer.remote_device.node_map.Width:
                     max_width = self.image_acquirer.remote_device.node_map.Width.max
@@ -274,22 +298,49 @@ class GigEBackend(BaseCameraBackend):
 
     def _capture_loop(self) -> None:
         """Background thread สำหรับอ่านภาพจากกล้อง"""
+        import cv2
+
         while self.is_running and self.image_acquirer is not None:
             try:
                 # Fetch buffer with timeout
                 with self.image_acquirer.fetch(timeout=1.0) as buffer:
                     # Get numpy array from buffer
                     component = buffer.payload.components[0]
-                    frame = component.data.reshape(component.height, component.width, -1)
 
-                    # Convert to BGR if needed (most cameras use Mono or RGB8)
-                    if len(frame.shape) == 2:  # Mono
-                        frame = np.stack([frame] * 3, axis=-1)
-                    elif frame.shape[2] == 1:  # Mono with channel
-                        frame = np.repeat(frame, 3, axis=2)
-                    elif frame.shape[2] == 3:  # RGB
-                        # Convert RGB to BGR for OpenCV compatibility
-                        frame = frame[:, :, ::-1]
+                    # Get pixel format from camera
+                    pixel_format = self.image_acquirer.remote_device.node_map.PixelFormat.value
+
+                    # Reshape based on pixel format
+                    if 'Bayer' in pixel_format:
+                        # Bayer formats are single channel raw data
+                        frame = component.data.reshape(component.height, component.width)
+
+                        # Demosaic Bayer to BGR based on pattern
+                        if 'RG' in pixel_format:
+                            frame = cv2.cvtColor(frame, cv2.COLOR_BayerRG2BGR)
+                        elif 'GB' in pixel_format:
+                            frame = cv2.cvtColor(frame, cv2.COLOR_BayerGB2BGR)
+                        elif 'GR' in pixel_format:
+                            frame = cv2.cvtColor(frame, cv2.COLOR_BayerGR2BGR)
+                        elif 'BG' in pixel_format:
+                            frame = cv2.cvtColor(frame, cv2.COLOR_BayerBG2BGR)
+                        else:
+                            # Default to RG if pattern unknown
+                            frame = cv2.cvtColor(frame, cv2.COLOR_BayerRG2BGR)
+                    else:
+                        # Non-Bayer formats
+                        frame = component.data.reshape(component.height, component.width, -1)
+
+                        # Convert to BGR if needed
+                        if len(frame.shape) == 2:  # Mono
+                            frame = np.stack([frame] * 3, axis=-1)
+                        elif frame.shape[2] == 1:  # Mono with channel
+                            frame = np.repeat(frame, 3, axis=2)
+                        elif frame.shape[2] == 3:  # RGB
+                            # Convert RGB to BGR for OpenCV compatibility
+                            frame = frame[:, :, ::-1]
+                        elif frame.shape[2] == 4:  # RGBA
+                            frame = cv2.cvtColor(frame, cv2.COLOR_RGBA2BGR)
 
                     # Ensure uint8
                     if frame.dtype != np.uint8:
