@@ -80,7 +80,14 @@ class Settings:
             "save_defect_only": False,  # Deprecated: ใช้ save_ok_images และ save_ng_images แทน
             "inspection_interval": 0.1,  # วินาที
             "alert_on_defect": True,
-            "alert_sound": True
+            "alert_sound": True,
+            # Multi-Shot Inspection
+            "multishot_enabled": False,  # เปิดใช้งาน multi-shot inspection
+            "multishot_shots": 4,  # จำนวน shots ต่อ workpiece
+            "multishot_interval": 2.0,  # ระยะห่างระหว่าง shots (วินาที)
+            "multishot_strategy": "majority_vote",  # majority_vote, unanimous, any, confidence_weighted
+            "multishot_save_all_shots": True,  # บันทึกทุก shots
+            "multishot_save_report": True  # บันทึก aggregation report
         },
 
         # Database Settings
@@ -134,9 +141,17 @@ class Settings:
         # Snapshot Training Settings
         "snapshot_training": {
             "output_dir": "training_images",
-            "image_size": "640x640",
+            "width": 640,
+            "height": 640,
             "file_prefix": "train_image",
-            "resize_mode": "crop"  # letterbox, crop, stretch
+            "resize_mode": "crop",  # letterbox, crop, stretch
+            # Multi-Shot Capture
+            "multishot_enabled": False,  # เปิดใช้งาน multi-shot capture
+            "multishot_shots": 4,  # จำนวน shots ต่อ workpiece
+            "multishot_interval": 2.0,  # ระยะห่างระหว่าง shots (วินาที)
+            "multishot_auto_advance": True,  # ถ่ายอัตโนมัติหรือรอ manual
+            "multishot_show_grid": True,  # แสดง grid overlay
+            "multishot_naming": "{class}/wp{id:03d}_shot{n}.jpg"  # รูปแบบการตั้งชื่อ
         }
     }
 
