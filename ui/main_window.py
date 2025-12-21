@@ -21,6 +21,9 @@ from .dialogs.camera_profiles_dialog import CameraProfilesDialog
 from .dialogs.model_profiles_dialog import ModelProfilesDialog
 from .dialogs.snapshot_training_settings_dialog import SnapshotTrainingSettingsDialog
 from .dialogs.mqtt_settings_dialog import MQTTSettingsDialog
+from .dialogs.multishot_capture_dialog import MultiShotCaptureDialog
+from .dialogs.multishot_inspection_settings_dialog import MultiShotInspectionSettingsDialog
+from .dialogs.multishot_result_dialog import MultiShotResultDialog
 
 
 class MainWindow(QMainWindow):
@@ -130,6 +133,27 @@ class MainWindow(QMainWindow):
         mqtt_settings_action = QAction("📡 ตั้งค่า MQTT Connection...", self)
         mqtt_settings_action.triggered.connect(self.on_mqtt_settings)
         tools_menu.addAction(mqtt_settings_action)
+
+        tools_menu.addSeparator()
+
+        # Multi-Shot submenu
+        multishot_menu = tools_menu.addMenu("🎬 Multi-Shot")
+
+        multishot_capture_action = QAction("📸 Multi-Shot Capture (Training)", self)
+        multishot_capture_action.setToolTip("ถ่ายภาพหลายมุมสำหรับการเทรน")
+        multishot_capture_action.triggered.connect(self.on_multishot_capture)
+        multishot_menu.addAction(multishot_capture_action)
+
+        multishot_inspection_action = QAction("🔍 Multi-Shot Inspection", self)
+        multishot_inspection_action.setToolTip("ตรวจสอบชิ้นงานด้วยหลายมุม")
+        multishot_inspection_action.triggered.connect(self.on_multishot_inspection)
+        multishot_menu.addAction(multishot_inspection_action)
+
+        multishot_menu.addSeparator()
+
+        multishot_settings_action = QAction("⚙ Multi-Shot Settings", self)
+        multishot_settings_action.triggered.connect(self.on_multishot_settings)
+        multishot_menu.addAction(multishot_settings_action)
 
         tools_menu.addSeparator()
 
@@ -545,6 +569,141 @@ class MainWindow(QMainWindow):
                         self.app_controller.mqtt_client = None
                         self.app_controller.inspection_engine.mqtt_client = None
                     self.alert_panel.add_info("MQTT Connection ถูกปิดใช้งาน")
+
+    def on_multishot_capture(self):
+        """เปิด Multi-Shot Capture Dialog สำหรับ training"""
+        if not self.app_controller:
+            return
+
+        if not self.app_controller.camera_manager.is_connected():
+            self.alert_panel.add_error("กรุณาเชื่อมต่อกล้องก่อน")
+            return
+
+        dialog = MultiShotCaptureDialog(
+            self.app_controller.camera_manager,
+            self.app_controller.settings,
+            parent=self
+        )
+
+        # Connect signal
+        dialog.capture_completed.connect(self.on_multishot_training_captured)
+
+        # Show dialog
+        dialog.exec()
+
+    def on_multishot_training_captured(self, shots, class_name, workpiece_id):
+        """Handle เมื่อถ่าย multi-shot training เสร็จ"""
+        try:
+            from utils.multishot_capture import MultiShotCapture
+
+            # Get settings
+            output_dir = self.app_controller.settings.get('snapshot_training.output_dir', 'training_images')
+            width = self.app_controller.settings.get('snapshot_training.width', 640)
+            height = self.app_controller.settings.get('snapshot_training.height', 640)
+            resize_mode = self.app_controller.settings.get('snapshot_training.resize_mode', 'crop')
+
+            # Save training shots
+            capture = MultiShotCapture(self.app_controller.camera_manager, num_shots=len(shots))
+
+            metadata = capture.save_training_shots(
+                shots=shots,
+                workpiece_id=workpiece_id,
+                class_name=class_name,
+                output_dir=output_dir,
+                width=width,
+                height=height,
+                resize_mode=resize_mode
+            )
+
+            self.alert_panel.add_success(f"✓ บันทึก {len(shots)} ภาพสำหรับ wp{workpiece_id:03d} ({class_name})")
+
+        except Exception as e:
+            self.alert_panel.add_error(f"✗ Error saving training shots: {e}")
+
+    def on_multishot_inspection(self):
+        """เรียก Multi-Shot Inspection"""
+        if not self.app_controller:
+            return
+
+        if not self.app_controller.camera_manager.is_connected():
+            self.alert_panel.add_error("กรุณาเชื่อมต่อกล้องก่อน")
+            return
+
+        if not hasattr(self.app_controller, 'yolo_detector') or self.app_controller.yolo_detector is None:
+            self.alert_panel.add_error("กรุณาโหลด YOLO model ก่อน")
+            return
+
+        try:
+            from core.multishot_inspector import MultiShotInspector
+            from utils.multishot_capture import MultiShotCapture
+
+            # Get settings
+            num_shots = self.app_controller.settings.get('inspection.multishot_shots', 4)
+            interval = self.app_controller.settings.get('inspection.multishot_interval', 2.0)
+            strategy = self.app_controller.settings.get('inspection.multishot_strategy', 'majority_vote')
+            conf_threshold = self.app_controller.settings.get('yolo.confidence_threshold', 0.5)
+
+            # Create inspector
+            inspector = MultiShotInspector(
+                model=self.app_controller.yolo_detector.model,
+                strategy=strategy,
+                conf_threshold=conf_threshold
+            )
+
+            # Create capture helper
+            capture = MultiShotCapture(
+                self.app_controller.camera_manager,
+                num_shots=num_shots,
+                interval=interval
+            )
+
+            self.alert_panel.add_info(f"เริ่ม Multi-Shot Inspection ({num_shots} shots)...")
+
+            # Capture shots
+            shots = capture.capture_sequence(
+                auto_advance=True,
+                progress_callback=lambda current, total: self.statusbar.showMessage(f"Capturing shot {current}/{total}..."),
+                countdown_callback=lambda secs: self.statusbar.showMessage(f"Next shot in {secs}s...")
+            )
+
+            if not shots:
+                self.alert_panel.add_error("ไม่สามารถถ่ายภาพได้")
+                return
+
+            self.statusbar.showMessage("Analyzing...")
+
+            # Inspect
+            result = inspector.inspect(shots, save_annotated=True)
+
+            # Show result dialog
+            dialog = MultiShotResultDialog(result, parent=self)
+            dialog.exec()
+
+            # Log result
+            decision = result['final_decision']['result']
+            confidence = result['final_decision']['confidence']
+            total_defects = result['final_decision']['total_defects']
+
+            if decision == 'NG':
+                self.alert_panel.add_defect_alert(f"Multi-Shot: {decision} - {total_defects} defects (Confidence: {confidence})")
+            else:
+                self.alert_panel.add_success(f"Multi-Shot: {decision} (Confidence: {confidence})")
+
+            self.statusbar.showMessage(f"Multi-Shot Inspection: {decision}")
+
+        except Exception as e:
+            self.alert_panel.add_error(f"✗ Multi-Shot Inspection Error: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def on_multishot_settings(self):
+        """เปิด Multi-Shot Inspection Settings Dialog"""
+        if self.app_controller and hasattr(self.app_controller, 'settings'):
+            dialog = MultiShotInspectionSettingsDialog(self.app_controller.settings, self)
+            result = dialog.exec()
+
+            if result:
+                self.alert_panel.add_success("✓ บันทึกการตั้งค่า Multi-Shot Inspection เรียบร้อย")
 
     def run_inspection(self):
         """รันการตรวจสอบ 1 รอบ"""
