@@ -24,6 +24,7 @@ from .dialogs.mqtt_settings_dialog import MQTTSettingsDialog
 from .dialogs.multishot_capture_dialog import MultiShotCaptureDialog
 from .dialogs.multishot_inspection_settings_dialog import MultiShotInspectionSettingsDialog
 from .dialogs.multishot_result_dialog import MultiShotResultDialog
+from .dialogs.multishot_validation_rules_dialog import MultiShotValidationRulesDialog
 
 
 class MainWindow(QMainWindow):
@@ -154,6 +155,11 @@ class MainWindow(QMainWindow):
         multishot_settings_action = QAction("⚙ Multi-Shot Settings", self)
         multishot_settings_action.triggered.connect(self.on_multishot_settings)
         multishot_menu.addAction(multishot_settings_action)
+
+        multishot_validation_action = QAction("✓ Validation Rules", self)
+        multishot_validation_action.setToolTip("ตั้งค่า validation rules สำหรับการนับจำนวนชิ้นส่วน")
+        multishot_validation_action.triggered.connect(self.on_multishot_validation_rules)
+        multishot_menu.addAction(multishot_validation_action)
 
         tools_menu.addSeparator()
 
@@ -634,21 +640,55 @@ class MainWindow(QMainWindow):
             return
 
         try:
-            from core.multishot_inspector import MultiShotInspector
             from utils.multishot_capture import MultiShotCapture
 
             # Get settings
             num_shots = self.app_controller.settings.get('inspection.multishot_shots', 4)
             interval = self.app_controller.settings.get('inspection.multishot_interval', 2.0)
-            strategy = self.app_controller.settings.get('inspection.multishot_strategy', 'majority_vote')
             conf_threshold = self.app_controller.settings.get('yolo.confidence_threshold', 0.5)
 
-            # Create inspector
-            inspector = MultiShotInspector(
-                model=self.app_controller.yolo_detector.model,
-                strategy=strategy,
-                conf_threshold=conf_threshold
-            )
+            # Check if validation mode is enabled
+            validation_enabled = self.app_controller.settings.get('inspection.multishot_validation_enabled', False)
+
+            if validation_enabled:
+                # Use MultiShotValidator
+                from core.multishot_validator import MultiShotValidator
+
+                validation_strategy = self.app_controller.settings.get('inspection.multishot_validation_strategy', 'unanimous')
+                validation_rules_list = self.app_controller.settings.get('inspection.multishot_validation_rules', [])
+
+                if not validation_rules_list:
+                    self.alert_panel.add_error("กรุณากำหนด Validation Rules ก่อน")
+                    return
+
+                validation_rules = {
+                    "enabled": True,
+                    "pass_condition": "all",
+                    "rules": validation_rules_list
+                }
+
+                # Create validator
+                validator = MultiShotValidator(
+                    model=self.app_controller.yolo_detector.model,
+                    validation_rules=validation_rules,
+                    strategy=validation_strategy
+                )
+
+                mode_text = "Multi-Shot Validation"
+            else:
+                # Use MultiShotInspector (defect detection)
+                from core.multishot_inspector import MultiShotInspector
+
+                strategy = self.app_controller.settings.get('inspection.multishot_strategy', 'majority_vote')
+
+                # Create inspector
+                validator = MultiShotInspector(
+                    model=self.app_controller.yolo_detector.model,
+                    strategy=strategy,
+                    conf_threshold=conf_threshold
+                )
+
+                mode_text = "Multi-Shot Inspection"
 
             # Create capture helper
             capture = MultiShotCapture(
@@ -657,7 +697,7 @@ class MainWindow(QMainWindow):
                 interval=interval
             )
 
-            self.alert_panel.add_info(f"เริ่ม Multi-Shot Inspection ({num_shots} shots)...")
+            self.alert_panel.add_info(f"เริ่ม {mode_text} ({num_shots} shots)...")
 
             # Capture shots
             shots = capture.capture_sequence(
@@ -672,24 +712,64 @@ class MainWindow(QMainWindow):
 
             self.statusbar.showMessage("Analyzing...")
 
-            # Inspect
-            result = inspector.inspect(shots, save_annotated=True)
+            # Inspect or Validate
+            if validation_enabled:
+                result = validator.validate(shots)
+                decision = result['final_decision']
+                confidence = result['confidence']
 
-            # Show result dialog
-            dialog = MultiShotResultDialog(result, parent=self)
-            dialog.exec()
+                # Show result (can create custom dialog later)
+                if decision == 'PASS':
+                    self.alert_panel.add_success(f"{mode_text}: {decision} (Confidence: {confidence})")
+                else:
+                    failed_shots = result['summary']['failed_shots']
+                    self.alert_panel.add_defect_alert(f"{mode_text}: {decision} - {failed_shots} shots failed (Confidence: {confidence})")
 
-            # Log result
-            decision = result['final_decision']['result']
-            confidence = result['final_decision']['confidence']
-            total_defects = result['final_decision']['total_defects']
+                # Display validation results
+                from PyQt6.QtWidgets import QMessageBox
+                summary = result['summary']
+                msg = f"""
+{mode_text} Result:
 
-            if decision == 'NG':
-                self.alert_panel.add_defect_alert(f"Multi-Shot: {decision} - {total_defects} defects (Confidence: {confidence})")
+Decision: {decision}
+Confidence: {confidence}
+
+Summary:
+  Total Shots: {summary['total_shots']}
+  Passed: {summary['passed_shots']}
+  Failed: {summary['failed_shots']}
+  Pass Rate: {summary['pass_rate']:.1f}%
+"""
+
+                if result['failed_shot_details']:
+                    msg += "\n⚠ Failed Shots:\n"
+                    for failed in result['failed_shot_details']:
+                        msg += f"\n  Shot {failed['shot_id']}:\n"
+                        msg += f"    Counts: {failed['class_counts']}\n"
+                        for rule in failed['failed_rules']:
+                            msg += f"    ✗ {rule['message']}\n"
+
+                QMessageBox.information(self, mode_text, msg)
+                self.statusbar.showMessage(f"{mode_text}: {decision}")
+
             else:
-                self.alert_panel.add_success(f"Multi-Shot: {decision} (Confidence: {confidence})")
+                result = validator.inspect(shots, save_annotated=True)
 
-            self.statusbar.showMessage(f"Multi-Shot Inspection: {decision}")
+                # Show result dialog
+                dialog = MultiShotResultDialog(result, parent=self)
+                dialog.exec()
+
+                # Log result
+                decision = result['final_decision']['result']
+                confidence = result['final_decision']['confidence']
+                total_defects = result['final_decision']['total_defects']
+
+                if decision == 'NG':
+                    self.alert_panel.add_defect_alert(f"{mode_text}: {decision} - {total_defects} defects (Confidence: {confidence})")
+                else:
+                    self.alert_panel.add_success(f"{mode_text}: {decision} (Confidence: {confidence})")
+
+                self.statusbar.showMessage(f"{mode_text}: {decision}")
 
         except Exception as e:
             self.alert_panel.add_error(f"✗ Multi-Shot Inspection Error: {e}")
@@ -704,6 +784,15 @@ class MainWindow(QMainWindow):
 
             if result:
                 self.alert_panel.add_success("✓ บันทึกการตั้งค่า Multi-Shot Inspection เรียบร้อย")
+
+    def on_multishot_validation_rules(self):
+        """เปิด Multi-Shot Validation Rules Dialog"""
+        if self.app_controller and hasattr(self.app_controller, 'settings'):
+            dialog = MultiShotValidationRulesDialog(self.app_controller.settings, self)
+            result = dialog.exec()
+
+            if result:
+                self.alert_panel.add_success("✓ บันทึกการตั้งค่า Validation Rules เรียบร้อย")
 
     def run_inspection(self):
         """รันการตรวจสอบ 1 รอบ"""

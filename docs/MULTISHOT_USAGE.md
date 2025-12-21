@@ -6,7 +6,8 @@
 2. [Training Mode - การเก็บข้อมูล](#training-mode)
 3. [Inspection Mode - การตรวจสอบ](#inspection-mode)
 4. [Aggregation Strategies](#aggregation-strategies)
-5. [ตัวอย่างการใช้งาน Code](#ตัวอย่างการใช้งาน-code)
+5. [Multi-Shot Validation - การตรวจสอบแบบมีเงื่อนไข](#multi-shot-validation)
+6. [ตัวอย่างการใช้งาน Code](#ตัวอย่างการใช้งาน-code)
 
 ---
 
@@ -226,6 +227,220 @@ inspector = MultiShotInspector(model, strategy='confidence_weighted')
 - ✅ Balanced scoring
 
 **Use Case:** R&D, Quality audit, การวิจัย
+
+---
+
+## Multi-Shot Validation
+
+### การตรวจสอบแบบมีเงื่อนไข (Validation Rules)
+
+Multi-Shot Validator ใช้สำหรับกรณีที่ต้องการตรวจสอบ**จำนวนชิ้นส่วนที่แน่นอน**ในแต่ละจุด (shot)
+
+### Use Case
+
+**ตัวอย่าง:** ชิ้นงานมี 6 จุดตรวจสอบ แต่ละจุดต้องมี:
+- Nut = 10 ชิ้น
+- Bolt = 30 ชิ้น
+
+**เงื่อนไข:** ถ้าจุดใดจุดหนึ่งไม่ตรงตามกำหนด → ชิ้นงาน FAIL
+
+---
+
+### วิธีการใช้งาน
+
+```python
+from core.multishot_validator import MultiShotValidator
+from utils.multishot_capture import MultiShotCapture
+from ultralytics import YOLO
+
+# 1. Load model
+model = YOLO('best.pt')
+
+# 2. กำหนด validation rules
+validation_rules = {
+    "enabled": True,
+    "pass_condition": "all",
+    "rules": [
+        {
+            "type": "count_exact",
+            "class_name": "nut",
+            "expected": 10,
+            "tolerance": 0
+        },
+        {
+            "type": "count_exact",
+            "class_name": "bolt",
+            "expected": 30,
+            "tolerance": 0
+        }
+    ]
+}
+
+# 3. สร้าง validator
+validator = MultiShotValidator(
+    model=model,
+    validation_rules=validation_rules,
+    strategy='unanimous'  # ทุก shot ต้อง pass
+)
+
+# 4. Capture 6 shots (แต่ละจุดตรวจสอบ)
+capture = MultiShotCapture(camera, num_shots=6, interval=2.0)
+shots = capture.capture_sequence(auto_advance=True)
+
+# 5. Validate
+result = validator.validate(shots)
+
+# 6. ตรวจสอบผลลัพธ์
+if result['final_decision'] == 'PASS':
+    print(f"✅ PASS - ทุกจุดผ่าน ({result['summary']['passed_shots']}/{result['summary']['total_shots']})")
+else:
+    print(f"❌ FAIL - มี {result['summary']['failed_shots']} จุดไม่ผ่าน")
+
+    # แสดงรายละเอียดจุดที่ fail
+    for failed in result['failed_shot_details']:
+        print(f"\n  Shot {failed['shot_id']}:")
+        print(f"    Actual: {failed['class_counts']}")
+        print(f"    Failed rules:")
+        for rule in failed['failed_rules']:
+            print(f"      - {rule['message']}")
+```
+
+---
+
+### Validation Rule Types
+
+#### 1. Count Exact (จำนวนที่แน่นอน)
+
+```python
+{
+    "type": "count_exact",
+    "class_name": "nut",
+    "expected": 10,
+    "tolerance": 0  # ยอมให้ผิดพลาดได้ ±0
+}
+```
+
+**เงื่อนไข:** `abs(actual - expected) <= tolerance`
+
+**ตัวอย่าง:**
+- expected=10, tolerance=0 → ต้องเจอ 10 ชิ้นพอดี
+- expected=10, tolerance=1 → ยอมรับ 9-11 ชิ้น
+
+#### 2. Count Range (ช่วงจำนวน)
+
+```python
+{
+    "type": "count_range",
+    "class_name": "bolt",
+    "min": 28,
+    "max": 32
+}
+```
+
+**เงื่อนไข:** `min <= actual <= max`
+
+**Use Case:** ยอมให้มีช่วงค่อนข้างกว้าง
+
+---
+
+### Validation Strategies
+
+#### 1. Unanimous (เข้มงวด) ⭐
+
+```python
+validator = MultiShotValidator(model, validation_rules, strategy='unanimous')
+```
+
+**กลไก:** **ทุกจุด (100%)** ต้อง pass
+
+**Use Case:**
+- ชิ้นงานที่ต้องการความแม่นยำสูง
+- แต่ละจุดมีความสำคัญเท่ากัน
+- **แนะนำสำหรับการตรวจนับ**
+
+#### 2. Majority Vote
+
+```python
+validator = MultiShotValidator(model, validation_rules, strategy='majority_vote')
+```
+
+**กลไก:** **>50%** ของจุดต้อง pass
+
+**Use Case:**
+- ยอมให้จุดบางจุดไม่ผ่านได้
+- ต้องการความยืดหยุ่น
+
+---
+
+### ตัวอย่างผลลัพธ์
+
+**กรณี PASS:**
+
+```
+============================================================
+Final Decision: PASS
+Confidence: HIGH
+============================================================
+
+Summary:
+  Total Shots: 6
+  Passed: 6
+  Failed: 0
+  Pass Rate: 100.0%
+
+Per-Shot Results:
+  ✓ Shot 1: PASS
+     Counts: {'nut': 10, 'bolt': 30}
+       ✓ nut: 10/10
+       ✓ bolt: 30/30
+  ✓ Shot 2: PASS
+     Counts: {'nut': 10, 'bolt': 30}
+       ✓ nut: 10/10
+       ✓ bolt: 30/30
+  ...
+```
+
+**กรณี FAIL:**
+
+```
+============================================================
+Final Decision: FAIL
+Confidence: LOW
+============================================================
+
+Summary:
+  Total Shots: 6
+  Passed: 5
+  Failed: 1
+  Pass Rate: 83.3%
+
+Per-Shot Results:
+  ✓ Shot 1: PASS
+  ✓ Shot 2: PASS
+  ✗ Shot 3: FAIL
+     Counts: {'nut': 9, 'bolt': 30}
+       ✗ nut: 9/10 (FAIL)
+       ✓ bolt: 30/30
+  ...
+
+⚠ Failed Shots Details:
+  Shot 3:
+    Actual counts: {'nut': 9, 'bolt': 30}
+    Failed rules:
+      - nut: 9/10 (FAIL)
+```
+
+---
+
+### สรุปความแตกต่าง
+
+| Feature | MultiShotInspector | MultiShotValidator |
+|---------|-------------------|-------------------|
+| **วัตถุประสงค์** | ตรวจหา defects | ตรวจนับจำนวนชิ้นส่วน |
+| **Output** | OK/NG based on defects | PASS/FAIL based on counts |
+| **Rules** | ไม่มี (detect อย่างเดียว) | มี validation rules |
+| **Use Case** | Quality inspection | Assembly verification |
+| **ตัวอย่าง** | หารอย scratch, crack | นับ nut=10, bolt=30 |
 
 ---
 

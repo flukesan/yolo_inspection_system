@@ -87,7 +87,25 @@ class Settings:
             "multishot_interval": 2.0,  # ระยะห่างระหว่าง shots (วินาที)
             "multishot_strategy": "majority_vote",  # majority_vote, unanimous, any, confidence_weighted
             "multishot_save_all_shots": True,  # บันทึกทุก shots
-            "multishot_save_report": True  # บันทึก aggregation report
+            "multishot_save_report": True,  # บันทึก aggregation report
+            # Multi-Shot Validation (Count-based validation)
+            "multishot_validation_enabled": False,  # ใช้ validation แทน defect detection
+            "multishot_validation_strategy": "unanimous",  # unanimous, majority_vote
+            "multishot_validation_rules": [
+                # Example:
+                # {
+                #     "type": "count_exact",
+                #     "class_name": "nut",
+                #     "expected": 10,
+                #     "tolerance": 0
+                # },
+                # {
+                #     "type": "count_range",
+                #     "class_name": "bolt",
+                #     "min": 28,
+                #     "max": 32
+                # }
+            ]
         },
 
         # Database Settings
