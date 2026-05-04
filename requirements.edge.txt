@@ -5,3 +5,4 @@ pillow
 pydantic
 pydantic-settings
 pyyaml
+httpx

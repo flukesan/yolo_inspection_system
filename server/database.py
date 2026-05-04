@@ -1,12 +1,14 @@
 """Async PostgreSQL database pool."""
-import asyncio
 from server.config import settings
 
-class Database:
-    def __init__(self):
-        self.pool = None
 
-    async def connect(self):
+class Database:
+    def __init__(self) -> None:
+        self.pool = None
+        self.available = False
+        self.last_error: str | None = None
+
+    async def connect(self) -> bool:
         try:
             import asyncpg
             self.pool = await asyncpg.create_pool(
@@ -15,25 +17,35 @@ class Database:
                 user=settings.postgres_user,
                 password=settings.postgres_password,
                 database=settings.postgres_db,
-                min_size=1, max_size=10
+                min_size=1, max_size=10,
+                command_timeout=10,
             )
-        except Exception:
-            print("WARN: PostgreSQL unavailable, using fallback")
+            async with self.pool.acquire() as conn:
+                await conn.execute("SELECT 1")
+            self.available = True
+            return True
+        except Exception as exc:
+            self.last_error = str(exc)
+            self.pool = None
+            self.available = False
+            print(f"WARN: PostgreSQL unavailable ({exc!s}); using in-memory fallback")
+            return False
 
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         if self.pool:
             await self.pool.close()
+            self.pool = None
+            self.available = False
 
-    async def fetch(self, query: str, *args):
+    async def ping(self) -> bool:
         if not self.pool:
-            return []
-        async with self.pool.acquire() as conn:
-            return await conn.fetch(query, *args)
+            return False
+        try:
+            async with self.pool.acquire() as conn:
+                await conn.execute("SELECT 1")
+            return True
+        except Exception:
+            return False
 
-    async def execute(self, query: str, *args):
-        if not self.pool:
-            return None
-        async with self.pool.acquire() as conn:
-            return await conn.execute(query, *args)
 
 db = Database()
