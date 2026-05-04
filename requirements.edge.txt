@@ -1,0 +1,7 @@
+snap7
+opencv-python-headless
+numpy
+pillow
+pydantic
+pydantic-settings
+pyyaml

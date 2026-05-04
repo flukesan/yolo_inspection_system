@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+python-jose[cryptography]
+passlib[bcrypt]
+asyncpg
+redis
+minio
+pyyaml
+pydantic
+pydantic-settings
+python-multipart

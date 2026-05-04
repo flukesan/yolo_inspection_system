@@ -1,0 +1,45 @@
+# Application Configuration
+camera:
+  source: 0
+  width: 1920
+  height: 1080
+  fps: 30
+
+plc:
+  protocol: s7comm
+  host: 192.168.1.10
+  rack: 0
+  slot: 2
+  heartbeat_interval: 3
+  heartbeat_timeout: 9
+  poll_interval_ms: 10
+
+inference:
+  model: yolov8n_defect.onnx
+  confidence_threshold: 0.5
+  iou_threshold: 0.45
+  device: CPU
+  quantized: false
+  multishot_count: 3
+
+storage:
+  retention_days: 30
+  buffer_max_mb: 100
+
+api:
+  host: 0.0.0.0
+  port: 8000
+  cors_origins: ["*"]
+  rate_limit: 100
+
+auth:
+  token_expire_minutes: 30
+  refresh_expire_days: 7
+
+logging:
+  level: INFO
+  format: json
+
+monitoring:
+  prometheus: true
+  metrics_port: 9090
