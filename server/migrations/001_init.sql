@@ -1,4 +1,4 @@
-# PostgreSQL Initial Schema
+-- PostgreSQL Initial Schema
 
 CREATE TABLE IF NOT EXISTS inspections (
     id SERIAL PRIMARY KEY,
