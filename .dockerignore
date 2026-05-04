@@ -32,6 +32,11 @@ env/
 *.swo
 *~
 
+# Frontend build output — must be included for Dockerfile.frontend COPY
+!frontend/dist/
+# Ignore node_modules but keep dist
+frontend/node_modules/
+
 # Data & Models (don't copy to container, use volumes)
 data/
 *.db
