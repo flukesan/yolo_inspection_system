@@ -1,4 +1,5 @@
 """Inspection routes."""
+from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from datetime import datetime
@@ -16,7 +17,7 @@ class InspectionCreate(BaseModel):
 
 @router.post("/inspection")
 async def create_inspection(data: InspectionCreate, user: dict = Depends(get_current_user)):
-    return {"id": 1, "timestamp": datetime.now().isoformat(), **data.dict()}
+    return {"id": 1, "timestamp": datetime.now().isoformat(), **data.model_dump()}
 
 @router.get("/inspections")
 async def list_inspections(

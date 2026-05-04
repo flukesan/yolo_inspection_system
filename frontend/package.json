@@ -10,9 +10,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@mantine/charts": "^7.18.2",
-    "@mantine/core": "^7.18.2",
-    "@mantine/hooks": "^7.18.2",
+    "@mantine/charts": "^9.1.1",
+    "@mantine/core": "^9.1.1",
+    "@mantine/hooks": "^9.1.1",
     "@tabler/icons-react": "^3.31.0",
     "axios": "^1.9.0",
     "react": "^19.1.0",
@@ -22,9 +22,10 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",
+    "@types/node": "^24.0.0",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
-    "@vitejs/plugin-react": "^4.4.1",
+    "@vitejs/plugin-react": "^6.0.1",
     "eslint": "^9.25.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",

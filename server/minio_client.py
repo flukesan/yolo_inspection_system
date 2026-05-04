@@ -1,5 +1,6 @@
 """MinIO client for defect image storage."""
 import io
+from typing import Optional
 from server.config import settings
 
 class MinioClient:
