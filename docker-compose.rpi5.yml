@@ -1,0 +1,30 @@
+services:
+  inference-engine:
+    extends: { file: docker-compose.yml, service: inference-engine }
+    platform: linux/arm64
+    deploy: { resources: { limits: { memory: 2G, cpus: '2.0' } } }
+    environment:
+      - ONNX_PROVIDER=CPUExecutionProvider
+      - OPENBLAS_NUM_THREADS=2
+    volumes:
+      - ./models:/models:ro
+    devices:
+      - /dev/video0:/dev/video0
+  api-server:
+    extends: { file: docker-compose.yml, service: api-server }
+    platform: linux/arm64
+    deploy: { resources: { limits: { memory: 512M, cpus: '1.0' } } }
+  postgres:
+    extends: { file: docker-compose.yml, service: postgres }
+    platform: linux/arm64
+    command: postgres -c shared_buffers=256MB -c effective_cache_size=768MB -c max_connections=20
+    deploy: { resources: { limits: { memory: 512M } } }
+  redis:
+    extends: { file: docker-compose.yml, service: redis }
+    platform: linux/arm64
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
+    deploy: { resources: { limits: { memory: 192M } } }
+  minio:
+    extends: { file: docker-compose.yml, service: minio }
+    platform: linux/arm64
+    deploy: { resources: { limits: { memory: 256M } } }
