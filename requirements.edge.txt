@@ -1,4 +1,5 @@
-snap7
+# Core edge runtime — works without a real PLC (mock-DB fallback in S7PLCAgent).
+# For real Siemens S7 hardware: also `pip install python-snap7` AND install libsnap7 system library.
 opencv-python-headless
 numpy
 pillow
