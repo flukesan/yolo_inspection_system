@@ -103,4 +103,17 @@ export const writePlcData = (data: Record<string, unknown>) => api.post('/api/pl
 export const getPlcConfig = () => api.get('/api/plc/config');
 export const updatePlcConfig = (cfg: { host: string; rack: number; slot: number }) => api.put('/api/plc/config', cfg);
 
+// Model API
+export const getModelList = () => api.get('/api/model/list');
+export const getModelConfig = () => api.get('/api/model/config');
+export const updateModelConfig = (cfg: { model: string; confidence: number; iou: number }) =>
+  api.put('/api/model/config', cfg);
+export const uploadModel = (file: File) => {
+  const fd = new FormData();
+  fd.append('file', file);
+  return api.post('/api/model/upload', fd, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+};
+
 export default api;
