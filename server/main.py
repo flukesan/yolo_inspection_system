@@ -9,6 +9,7 @@ from server.routes.images import router as images_router
 from server.routes.websocket import router as ws_router
 from server.routes.camera import router as camera_router
 from server.routes.plc import router as plc_router
+from server.routes.model import router as model_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -26,6 +27,7 @@ app.include_router(images_router)
 app.include_router(ws_router)
 app.include_router(camera_router)
 app.include_router(plc_router)
+app.include_router(model_router)
 
 @app.get("/api/health")
 async def health():
