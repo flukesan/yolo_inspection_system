@@ -2,12 +2,13 @@ import { useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { AppShell as MantineAppShell, Burger, Group, Title, NavLink, Text, ActionIcon, Menu, Avatar } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { IconDashboard, IconHistory, IconSettings, IconLogout, IconUser, IconRobot } from '@tabler/icons-react';
+import { IconDashboard, IconHistory, IconSettings, IconLogout, IconUser, IconRobot, IconCpu } from '@tabler/icons-react';
 import { clearAuth, getUser } from '../api/client';
 
 const navItems = [
   { label: 'Dashboard', icon: IconDashboard, to: '/dashboard' },
   { label: 'History', icon: IconHistory, to: '/history' },
+  { label: 'PLC Monitor', icon: IconCpu, to: '/plc-monitor' },
   { label: 'Settings', icon: IconSettings, to: '/settings', role: 'engineer' },
 ];
 
