@@ -14,7 +14,7 @@ class TestAuth:
         assert data["user"]["role"] == "engineer"
 
     def test_login_wrong_password(self):
-        resp = client.post("/api/auth/login", json={"username":"engineer","password":"wrong"})
+        resp = client.post("/api/auth/login", json={"username":"engineer","password":"wrongpass"})
         assert resp.status_code == 401
 
     def test_me_without_token(self):

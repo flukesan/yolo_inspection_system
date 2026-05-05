@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     plc_host: str = "192.168.1.10"
     plc_rack: int = 0
     plc_slot: int = 2
+    # Auth
+    admin_username: str = "engineer"
+    admin_password: str = "engineer123"
+    operator_username: str = "operator"
+    operator_password: str = "operator123"
     model_config = {"env_file": ".env", "extra": "ignore"}
 
 def load_config(config_path: str = "config/app_config.yaml") -> dict:
