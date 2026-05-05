@@ -40,6 +40,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
     return user
 
 def require_role(*roles: str):
+    """Dependency: require one of the given roles."""
     async def _dep(user: dict = Depends(get_current_user)) -> dict:
         if user["role"] not in roles:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient privileges")
