@@ -22,7 +22,6 @@ export default function OperationPage() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
   // ── Fullscreen API ────────────────────────────────────────────
