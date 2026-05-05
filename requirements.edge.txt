@@ -8,3 +8,4 @@ pydantic-settings
 pyyaml
 httpx
 onnxruntime
+aiohttp

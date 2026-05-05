@@ -15,6 +15,42 @@ from typing import Optional
 from edge.plc_agent import S7PLCAgent
 from edge.plc_enums import ErrorCode, InspectionResult, PLCState
 from edge.model_manager import get_model_manager
+from aiohttp import web
+
+
+async def handle_reload(request: web.Request) -> web.Response:
+    """POST /reload — reload current or specified model."""
+    try:
+        body = await request.json()
+        model_name = body.get("model", "")
+    except Exception:
+        model_name = ""
+
+    runtime = request.app["runtime"]
+    if model_name:
+        ok = runtime.model_manager.load(model_name)
+    else:
+        # Just reopen current model
+        current = runtime.model_manager.current_model
+        if current:
+            ok = runtime.model_manager.load(current.name)
+        else:
+            ok = False
+
+    return web.json_response({
+        "ok": ok,
+        "model": runtime.model_manager.current_model.name if runtime.model_manager.current_model else None,
+    })
+
+
+async def handle_models(request: web.Request) -> web.Response:
+    """GET /models — list available models."""
+    runtime = request.app["runtime"]
+    models = runtime.model_manager.list_models()
+    return web.json_response({
+        "models": [m.to_dict() for m in models],
+        "current": runtime.model_manager.current_model.name if runtime.model_manager.current_model else None,
+    })
 
 API_BASE = os.environ.get("API_BASE", "http://api-server:8000")
 API_USERNAME = os.environ.get("EDGE_USERNAME", os.environ.get("OPERATOR_USERNAME", "operator"))
@@ -220,10 +256,24 @@ class EdgeRuntime:
 
 async def main() -> None:
     runtime = EdgeRuntime()
+
+    # Start mini HTTP server for reload commands
+    app = web.Application()
+    app["runtime"] = runtime
+    app.router.add_post("/reload", handle_reload)
+    app.router.add_get("/models", handle_models)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", 8001)
+    await site.start()
+    print(f"[edge] Reload API listening on port 8001")
+
     try:
         await runtime.run()
     except KeyboardInterrupt:
         runtime.stop()
+    finally:
+        await runner.cleanup()
 
 
 if __name__ == "__main__":
