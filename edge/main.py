@@ -14,6 +14,7 @@ from typing import Optional
 
 from edge.plc_agent import S7PLCAgent
 from edge.plc_enums import ErrorCode, InspectionResult, PLCState
+from edge.model_manager import get_model_manager
 
 API_BASE = os.environ.get("API_BASE", "http://api-server:8000")
 API_USERNAME = os.environ.get("EDGE_USERNAME", os.environ.get("OPERATOR_USERNAME", "operator"))
@@ -111,7 +112,14 @@ class EdgeRuntime:
     def __init__(self) -> None:
         self.plc = S7PLCAgent(host=PLC_HOST, rack=PLC_RACK, slot=PLC_SLOT)
         self.api = APIClient(API_BASE, API_USERNAME, API_PASSWORD)
-        self.inference = MockInference()
+        self.model_manager = get_model_manager(
+            os.environ.get("MODEL_PATH", "/models")
+        )
+        if not self.model_manager.loaded:
+            print("[edge] WARNING: No ONNX model found — using mock fallback")
+            self.inference = MockInference()
+        else:
+            self.inference = self.model_manager  # ModelManager.predict()
         self.station = os.environ.get("STATION", "Station-1")
         self.part_counter = 0
         self._stop = asyncio.Event()
@@ -154,7 +162,27 @@ class EdgeRuntime:
         prev_state = self.plc.state
         self.plc.state = PLCState.INSPECTING
         try:
-            prediction = await self.inference.predict()
+            if isinstance(self.inference, MockInference):
+                prediction = await self.inference.predict()
+            else:
+                # ONNX inference — synchronous, run in thread
+                import numpy as np
+                loop = asyncio.get_running_loop()
+                info = self.model_manager.current_model
+                if info is None:
+                    raise RuntimeError("No model loaded")
+                # Create dummy frame matching input shape (batch=1)
+                shape = (1,) + info.input_shape[1:]
+                dummy = np.random.randn(*shape).astype(np.float32)
+                outputs = await loop.run_in_executor(None, self.model_manager.predict, dummy)
+                # Mock: treat max confidence as detection
+                conf = float(outputs.max()) if outputs.size > 0 else 0.5
+                ok = conf < 0.5
+                prediction = {
+                    "result": "OK" if ok else "NG",
+                    "confidence": round(conf, 4),
+                    "defect_class": None if ok else "Defect",
+                }
         except Exception as exc:
             self.plc.last_error = f"inference: {exc!s}"
             await self.plc.write_result(InspectionResult.ERROR, ErrorCode.INFERENCE_ERROR)
