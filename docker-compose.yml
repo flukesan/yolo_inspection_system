@@ -21,6 +21,8 @@ services:
       - postgres
       - redis
       - minio
+    volumes:
+      - ./models:/models:rw
     restart: unless-stopped
 
   dashboard:

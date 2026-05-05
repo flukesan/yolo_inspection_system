@@ -1,7 +1,9 @@
 """Model management routes — list, config, reload."""
 
 import os
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+import shutil
+from pathlib import Path
 from pydantic import BaseModel
 from typing import Optional, List
 from server.auth import get_current_user, require_role
@@ -105,3 +107,40 @@ async def reload_model(
             return r.json()
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Edge service unreachable: {e}")
+
+
+MODELS_DIR = Path(os.environ.get("MODELS_DIR", "/models"))
+MODELS_DIR.mkdir(exist_ok=True)
+
+
+@router.post("/upload")
+async def upload_model(
+    file: UploadFile = File(...),
+    user: dict = Depends(require_role("engineer")),
+):
+    """Upload a new .onnx model file."""
+    if not file.filename or not file.filename.endswith(".onnx"):
+        raise HTTPException(status_code=400, detail="Only .onnx files accepted")
+
+    path = MODELS_DIR / file.filename
+    try:
+        with path.open("wb") as f:
+            shutil.copyfileobj(file.file, f)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save: {e}")
+
+    # Validate: try loading with onnxruntime
+    try:
+        import onnxruntime as ort
+        ort.InferenceSession(str(path), providers=["CPUExecutionProvider"])
+    except Exception as e:
+        path.unlink(missing_ok=True)
+        raise HTTPException(status_code=400, detail=f"Invalid ONNX model: {e}")
+
+    file_size_mb = round(path.stat().st_size / (1024 * 1024), 2)
+    return {
+        "ok": True,
+        "name": file.filename,
+        "size_mb": file_size_mb,
+        "message": f"Model {file.filename} uploaded and validated",
+    }
