@@ -2,9 +2,9 @@
 FROM node:22-alpine AS builder
 WORKDIR /app
 
-# Install dependencies (cached layer)
-COPY frontend/package.json frontend/package-lock.json* ./
-RUN npm ci --legacy-peer-deps
+# Install dependencies
+COPY frontend/package.json ./
+RUN npm install --legacy-peer-deps
 
 # Copy source + build
 COPY frontend/ ./
