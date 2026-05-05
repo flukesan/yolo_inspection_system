@@ -198,9 +198,7 @@ class EdgeRuntime:
         prev_state = self.plc.state
         self.plc.state = PLCState.INSPECTING
         try:
-            if isinstance(self.inference, MockInference):
-                prediction = await self.inference.predict()
-            else:
+            if self.inference is self.model_manager:
                 # ONNX inference — synchronous, run in thread
                 import numpy as np
                 loop = asyncio.get_running_loop()
@@ -219,6 +217,8 @@ class EdgeRuntime:
                     "confidence": round(conf, 4),
                     "defect_class": None if ok else "Defect",
                 }
+            else:
+                prediction = await self.inference.predict()
         except Exception as exc:
             self.plc.last_error = f"inference: {exc!s}"
             await self.plc.write_result(InspectionResult.ERROR, ErrorCode.INFERENCE_ERROR)
