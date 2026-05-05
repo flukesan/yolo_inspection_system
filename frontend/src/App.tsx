@@ -21,10 +21,10 @@ export default function App() {
           <Route element={<AuthGuard><AppShell /></AuthGuard>}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/history" element={<HistoryPage />} />
-            <Route path="/operation" element={<OperationPage />} />
             <Route path="/plc-monitor" element={<PlcMonitorPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>
+          <Route path="/operation" element={<AuthGuard><OperationPage /></AuthGuard>} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </BrowserRouter>
