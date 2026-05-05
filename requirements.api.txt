@@ -11,3 +11,4 @@ pydantic-settings
 python-multipart
 opencv-python-headless
 # python-snap7  # Uncomment for real Siemens PLC (requires: pip install python-snap7)
+httpx
