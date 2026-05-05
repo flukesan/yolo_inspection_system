@@ -1,4 +1,11 @@
 # Application Configuration
+# ── Camera ────────────────────────────────────────────────
+# source types:
+#   USB/Notebook:  0, 1, 2, ...                 (device index)
+#   RTSP:          "rtsp://user:pass@ip:554/stream"
+#   IP Camera:     "http://ip:port/video"
+#   GigE Vision:   "gstreamer:aravissrc camera-name=..."
+#   Test file:     "/path/to/video.mp4"
 camera:
   source: 0
   width: 1920

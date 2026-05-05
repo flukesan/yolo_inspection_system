@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     admin_password: str = "engineer123"
     operator_username: str = "operator"
     operator_password: str = "operator123"
+    # Camera
+    camera_source: str = "0"
+    camera_width: int = 1920
+    camera_height: int = 1080
+    camera_fps: int = 30
     model_config = {"env_file": ".env", "extra": "ignore"}
 
 def load_config(config_path: str = "config/app_config.yaml") -> dict:
