@@ -10,5 +10,3 @@ pydantic
 pydantic-settings
 python-multipart
 opencv-python-headless
-numpy
-websockets
