@@ -1,10 +1,9 @@
 """ONNX Model Manager — load, reload, get metadata."""
 
-import os
 import json
 import threading
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
 import numpy as np
 
 class ModelInfo:
@@ -17,7 +16,7 @@ class ModelInfo:
         self.file_size_mb: float = 0
         self._load_meta()
 
-    def _load_meta(self):
+    def _load_meta(self) -> None:
         p = Path(self.path)
         if p.exists():
             self.file_size_mb = round(p.stat().st_size / (1024 * 1024), 2)
@@ -32,7 +31,7 @@ class ModelInfo:
             except Exception:
                 pass
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> Dict[str, Any]:
         return {
             "name": self.name,
             "input_shape": list(self.input_shape),
@@ -105,22 +104,26 @@ class ModelManager:
 
     @property
     def current_model(self) -> Optional[ModelInfo]:
-        return self._current_model
+        with self._lock:
+            return self._current_model
 
     @property
     def loaded(self) -> bool:
-        return self._session is not None
+        with self._lock:
+            return self._session is not None
 
 
 # Singleton
 _manager: Optional[ModelManager] = None
+_manager_lock = threading.Lock()
 
 def get_model_manager(models_dir: str = "/models") -> ModelManager:
     global _manager
     if _manager is None:
-        _manager = ModelManager(models_dir)
-        # Auto-load first available model
-        models = _manager.list_models()
-        if models:
-            _manager.load(models[0].name)
+        with _manager_lock:
+            if _manager is None:  # double-check
+                _manager = ModelManager(models_dir)
+                models = _manager.list_models()
+                if models:
+                    _manager.load(models[0].name)
     return _manager
