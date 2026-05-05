@@ -110,7 +110,10 @@ async def reload_model(
 
 
 MODELS_DIR = Path(os.environ.get("MODELS_DIR", "/models"))
-MODELS_DIR.mkdir(exist_ok=True)
+try:
+    MODELS_DIR.mkdir(exist_ok=True)
+except OSError:
+    pass  # Volume may not be mounted in dev/test
 
 
 @router.post("/upload")
