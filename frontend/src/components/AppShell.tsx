@@ -6,8 +6,8 @@ import { IconDashboard, IconHistory, IconSettings, IconLogout, IconUser, IconRob
 import { clearAuth, getUser } from '../api/client';
 
 const navItems = [
-  { label: 'Dashboard', icon: IconDashboard, to: '/dashboard' },
   { label: 'Operation', icon: IconCamera, to: '/operation' },
+  { label: 'Dashboard', icon: IconDashboard, to: '/dashboard' },
   { label: 'History', icon: IconHistory, to: '/history' },
   { label: 'PLC Monitor', icon: IconCpu, to: '/plc-monitor' },
   { label: 'Settings', icon: IconSettings, to: '/settings', role: 'engineer' },
