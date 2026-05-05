@@ -38,4 +38,21 @@ export const setPlcAddresses = (a:string[])=>api.put('/api/plc/addresses',a);
 export const readPlcAddress = (a:string)=>api.get('/api/plc/read',{params:{address:a}});
 export const writePlcData = (d:Record<string,unknown>)=>api.post('/api/plc/write',d);
 
+// Camera API
+export const getCameraConfig = () => api.get('/api/camera/config');
+export const updateCameraConfig = (data: Record<string, unknown>) => api.put('/api/camera/config', data);
+export const restartCamera = () => api.post('/api/camera/restart');
+export const getCameraSnapshot = () => api.get('/api/camera/snapshot');
+
+// PLC API
+export const testPlcConnection = () => api.post('/api/plc/test');
+export const getPlcStatus = () => api.get('/api/plc/status');
+export const getPlcData = () => api.get('/api/plc/data');
+export const getPlcAddresses = () => api.get('/api/plc/addresses');
+export const setPlcAddresses = (addrs: string[]) => api.put('/api/plc/addresses', addrs);
+export const readPlcAddress = (address: string) => api.get('/api/plc/read', { params: { address } });
+export const writePlcData = (data: Record<string, unknown>) => api.post('/api/plc/write', data);
+export const getPlcConfig = () => api.get('/api/plc/config');
+export const updatePlcConfig = (cfg: { host: string; rack: number; slot: number }) => api.put('/api/plc/config', cfg);
+
 export default api;

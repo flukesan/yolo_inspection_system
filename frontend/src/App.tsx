@@ -22,6 +22,7 @@ export default function App() {
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/plc-monitor" element={<PlcMonitorPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/plc-monitor" element={<PlcMonitorPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
