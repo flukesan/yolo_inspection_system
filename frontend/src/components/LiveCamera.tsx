@@ -7,7 +7,9 @@ export default function LiveCamera() {
 
   useEffect(() => {
     const token = localStorage.getItem('access_token');
-    const ws = new WebSocket(`ws://localhost:8000/api/ws/camera?token=${token}`);
+    if (!token) return;
+    const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8000';
+    const ws = new WebSocket(`${wsUrl}/api/ws/camera?token=${token}`);
     ws.onopen = () => setWsConnected(true);
     ws.onclose = () => setWsConnected(false);
     ws.onerror = () => setWsConnected(false);
