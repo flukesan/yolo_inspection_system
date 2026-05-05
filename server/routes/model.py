@@ -144,3 +144,41 @@ async def upload_model(
         "size_mb": file_size_mb,
         "message": f"Model {file.filename} uploaded and validated",
     }
+
+
+@router.get("/info")
+async def get_model_info(
+    name: str,
+    user: dict = Depends(get_current_user),
+):
+    """Get detailed info for a specific model."""
+    try:
+        import onnxruntime as ort
+        path = MODELS_DIR / f"{name}.onnx"
+        if not path.exists():
+            raise HTTPException(status_code=404, detail="Model not found")
+
+        session = ort.InferenceSession(str(path), providers=["CPUExecutionProvider"])
+        inputs = session.get_inputs()
+        outputs = session.get_outputs()
+
+        # Try loading class names from companion .json
+        class_names = []
+        meta_path = path.with_suffix(".json")
+        if meta_path.exists():
+            import json
+            with open(meta_path) as f:
+                meta = json.load(f)
+                class_names = meta.get("class_names", [])
+
+        return {
+            "name": name,
+            "input_shape": list(inputs[0].shape) if inputs else [],
+            "output_shape": list(outputs[0].shape) if outputs else [],
+            "num_classes": len(class_names),
+            "class_names": class_names,
+            "file_size_mb": round(path.stat().st_size / (1024 * 1024), 2),
+            "providers": ort.get_available_providers(),
+        }
+    except ImportError:
+        raise HTTPException(status_code=500, detail="onnxruntime not installed on server")
