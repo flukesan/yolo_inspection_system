@@ -10,6 +10,7 @@ import DashboardPage from './pages/DashboardPage';
 import HistoryPage from './pages/HistoryPage';
 import SettingsPage from './pages/SettingsPage';
 import PlcMonitorPage from './pages/PlcMonitorPage';
+import OperationPage from './pages/OperationPage';
 
 export default function App() {
   return (
@@ -20,9 +21,9 @@ export default function App() {
           <Route element={<AuthGuard><AppShell /></AuthGuard>}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/history" element={<HistoryPage />} />
+            <Route path="/operation" element={<OperationPage />} />
             <Route path="/plc-monitor" element={<PlcMonitorPage />} />
             <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/plc-monitor" element={<PlcMonitorPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>

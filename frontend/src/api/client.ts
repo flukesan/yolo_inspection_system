@@ -86,6 +86,9 @@ export const isAuthenticated = (): boolean => !!localStorage.getItem('access_tok
 
 export const isEngineer = (): boolean => { const user = getUser(); return user?.role === 'engineer'; };
 
+// Snap & Inspect (Operation page)
+export const snapAndInspect = () => api.post('/api/inspection/snap');
+
 // Camera API
 export const getCameraConfig = () => api.get('/api/camera/config');
 export const updateCameraConfig = (data: Record<string, unknown>) => api.put('/api/camera/config', data);
