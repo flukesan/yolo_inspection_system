@@ -169,7 +169,7 @@ export default function OperationPage() {
           bg={lastResult.result === 'OK' ? 'rgba(0,180,0,0.92)' : 'rgba(220,40,40,0.92)'}
         >
           <Stack gap={4} align="center">
-            <Text size={40} fw={900} c="white" style={{ lineHeight: 1 }}>
+            <Text fz={40} fw={900} c="white" style={{ lineHeight: 1 }}>
               {lastResult.result}
             </Text>
             <Text size="md" c="white" opacity={0.9}>
