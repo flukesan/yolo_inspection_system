@@ -1,8 +1,8 @@
 """
-PLC management routes — test connection, read data, live monitor.
+PLC management routes — test connection, read data, live monitor, address config.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
 from server.auth import get_current_user, require_role
@@ -70,3 +70,64 @@ async def read_plc_data(user: dict = Depends(get_current_user)):
         db_values=data.db_values,
         timestamp=data.timestamp,
     )
+
+
+# ── Address Config ────────────────────────────────────────────────
+
+_watch_addresses: list[str] = []
+
+
+@router.get("/addresses")
+async def get_watch_addresses(user: dict = Depends(get_current_user)):
+    plc = get_plc()
+    data = plc.last_data
+    result = {}
+    for addr in _watch_addresses:
+        val = _resolve_address(data, addr)
+        result[addr] = {"value": val, "type": type(val).__name__}
+    return {"addresses": _watch_addresses, "values": result}
+
+
+@router.put("/addresses")
+async def set_watch_addresses(
+    addrs: list[str],
+    user: dict = Depends(require_role("engineer")),
+):
+    global _watch_addresses
+    _watch_addresses = [a.strip() for a in addrs if a.strip()]
+    plc = get_plc()
+    data = plc.read_all()
+    result = {}
+    for addr in _watch_addresses:
+        val = _resolve_address(data, addr)
+        result[addr] = val
+    return {"addresses": _watch_addresses, "values": result}
+
+
+@router.get("/read")
+async def read_single_address(
+    address: str = Query(...),
+    user: dict = Depends(get_current_user),
+):
+    plc = get_plc()
+    data = plc.read_all()
+    val = _resolve_address(data, address.strip())
+    return {"address": address.strip(), "value": val, "type": type(val).__name__}
+
+
+def _resolve_address(data, addr: str):
+    addr = addr.strip()
+    if "." in addr:
+        if addr.startswith("DB") and "DBX" in addr:
+            return data.db_values.get(addr, False)
+        if addr.startswith("M"):
+            return data.m_bits.get(addr, False)
+        if addr.startswith("I"):
+            return data.i_bits.get(addr, False)
+        if addr.startswith("Q"):
+            return data.q_bits.get(addr, False)
+    if addr.startswith("MW"):
+        return data.m_words.get(addr, 0)
+    if addr.startswith("DB"):
+        return data.db_values.get(addr, 0)
+    return None
