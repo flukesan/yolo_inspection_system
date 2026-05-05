@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Paper, Title, Tabs, TextInput, NumberInput, Button, Select, Stack, Text, Alert, Group, Badge, Image, Grid } from '@mantine/core';
-import { IconCheck, IconAlertCircle, IconRefresh, IconCamera } from '@tabler/icons-react';
+import { Paper, Title, Tabs, TextInput, NumberInput, Button, Select, Stack, Text, Alert, Group, Badge, Image, Grid, FileInput, Divider } from '@mantine/core';
+import { IconCheck, IconAlertCircle, IconRefresh, IconCamera, IconUpload } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
-import { isEngineer, getUser, getCameraConfig, updateCameraConfig, restartCamera, getCameraSnapshot, testPlcConnection, getPlcStatus } from '../api/client';
+import { isEngineer, getUser, getCameraConfig, updateCameraConfig, restartCamera, getCameraSnapshot, testPlcConnection, getPlcStatus, getModelList, getModelConfig, updateModelConfig, uploadModel } from '../api/client';
 
 const SOURCE_TYPES = [
   { value: 'usb', label: 'USB / Notebook Camera' },
@@ -12,6 +12,14 @@ const SOURCE_TYPES = [
 ];
 
 const RESOLUTIONS = ['640x480', '1280x720', '1920x1080', '2560x1440', '3840x2160'];
+
+interface ModelItem {
+  name: string;
+  input_shape: number[];
+  num_classes: number;
+  class_names: string[];
+  file_size_mb: number;
+}
 
 export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
@@ -31,9 +39,13 @@ export default function SettingsPage() {
   const [error, setError] = useState('');
 
   // YOLO state
-  const [confidenceThreshold, setConfidenceThreshold] = useState(0.5);
-  const [iouThreshold, setIouThreshold] = useState(0.45);
-  const [modelSelect, setModelSelect] = useState('yolov8n_defect');
+  const [models, setModels] = useState<ModelItem[]>([]);
+  const [currentModel, setCurrentModel] = useState('yolov8n_defect');
+  const [modelConfidence, setModelConfidence] = useState(0.5);
+  const [modelIou, setModelIou] = useState(0.45);
+  const [modelClasses, setModelClasses] = useState<string[]>([]);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadMsg, setUploadMsg] = useState('');
 
   // PLC state
   const [plcIp, setPlcIp] = useState('192.168.1.10');
@@ -63,6 +75,23 @@ export default function SettingsPage() {
   useEffect(() => {
     getPlcStatus().then(res => setPlcStatus(res.data)).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    getModelList().then(res => {
+      setModels(res.data.models || []);
+      if (res.data.current) setCurrentModel(res.data.current);
+    }).catch(() => {});
+    getModelConfig().then(res => {
+      setCurrentModel(res.data.model);
+      setModelConfidence(res.data.confidence);
+      setModelIou(res.data.iou);
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const m = models.find(m => m.name === currentModel);
+    setModelClasses(m?.class_names || []);
+  }, [currentModel, models]);
 
   const sourceHint = () => {
     switch (camType) {
@@ -116,6 +145,31 @@ export default function SettingsPage() {
     } finally { setPlcTesting(false); }
   };
 
+  const handleUpload = async () => {
+    if (!uploadFile) return;
+    try {
+      const res = await uploadModel(uploadFile);
+      setUploadMsg(`✅ ${res.data.message}`);
+      setUploadFile(null);
+      const list = await getModelList();
+      setModels(list.data.models || []);
+    } catch (e: any) {
+      setUploadMsg(`❌ ${e.response?.data?.detail || 'Upload failed'}`);
+    }
+  };
+
+  const handleSaveModel = async () => {
+    try {
+      await updateModelConfig({
+        model: currentModel,
+        confidence: modelConfidence,
+        iou: modelIou,
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch { setError('Failed to save model settings'); }
+  };
+
   return <>
     <Title order={3} mb="md">Settings</Title>
     <Text size="sm" c="dimmed" mb="md">Logged in as: {getUser()?.username} ({getUser()?.role})</Text>
@@ -145,11 +199,72 @@ export default function SettingsPage() {
         </Stack></Paper>
       </Tabs.Panel>
 
-      <Tabs.Panel value="yolo"><Paper withBorder p="lg" radius="md"><Stack>
-        <Select label="Model" data={[{value:'yolov8n_defect',label:'YOLOv8 Nano'},{value:'yolov8s_defect',label:'YOLOv8 Small'},{value:'yolov8m_defect',label:'YOLOv8 Medium'}]} value={modelSelect} onChange={(v)=>v&&setModelSelect(v)}/>
-        <NumberInput label="Confidence Threshold" min={0.1} max={1.0} step={0.05} decimalScale={2} value={confidenceThreshold} onChange={(v)=>setConfidenceThreshold(Number(v))}/>
-        <NumberInput label="IoU Threshold" min={0.1} max={1.0} step={0.05} decimalScale={2} value={iouThreshold} onChange={(v)=>setIouThreshold(Number(v))}/>
-      </Stack></Paper></Tabs.Panel>
+      <Tabs.Panel value="yolo">
+        <Paper withBorder p="lg" radius="md">
+          <Stack>
+            <Select
+              label="Model"
+              data={models.map(m => ({
+                value: m.name,
+                label: `${m.name} (${m.num_classes} classes, ${m.file_size_mb} MB)`,
+              }))}
+              value={currentModel}
+              onChange={(v) => v && setCurrentModel(v)}
+              searchable
+            />
+
+            {modelClasses.length > 0 && (
+              <Paper withBorder p="sm" radius="sm">
+                <Text size="sm" fw={500} mb="xs">Classes ({modelClasses.length})</Text>
+                <Group gap={4}>
+                  {modelClasses.map(c => <Badge key={c} size="sm" variant="light" color="blue">{c}</Badge>)}
+                </Group>
+              </Paper>
+            )}
+
+            <NumberInput
+              label="Confidence Threshold"
+              min={0.1} max={1.0} step={0.05} decimalScale={2}
+              value={modelConfidence}
+              onChange={(v) => setModelConfidence(Number(v))}
+            />
+            <NumberInput
+              label="IoU Threshold"
+              min={0.1} max={1.0} step={0.05} decimalScale={2}
+              value={modelIou}
+              onChange={(v) => setModelIou(Number(v))}
+            />
+
+            <Divider label="Upload New Model" labelPosition="center" />
+
+            <Group>
+              <FileInput
+                placeholder="Select .onnx file"
+                accept=".onnx"
+                value={uploadFile}
+                onChange={setUploadFile}
+                style={{ flex: 1 }}
+              />
+              <Button
+                leftSection={<IconUpload size={14} />}
+                onClick={handleUpload}
+                disabled={!uploadFile}
+              >
+                Upload
+              </Button>
+            </Group>
+            {uploadMsg && (
+              <Alert color={uploadMsg.startsWith('✅') ? 'green' : 'red'} variant="light">
+                {uploadMsg}
+              </Alert>
+            )}
+
+            <Button color="orange" onClick={handleSaveModel}>
+              Save Model Settings
+            </Button>
+          </Stack>
+        </Paper>
+      </Tabs.Panel>
 
       <Tabs.Panel value="plc"><Paper withBorder p="lg" radius="md"><Stack>
         {plcStatus&&<Group><Badge size="lg" color={plcStatus.connected?'green':'red'}>{plcStatus.connected?'🟢 CONNECTED':'🔴 OFFLINE'}</Badge>{plcStatus.mock_mode&&<Badge size="lg" color="yellow" variant="light">MOCK MODE</Badge>}<Text size="sm" c="dimmed">Host: {plcStatus.host}</Text></Group>}
