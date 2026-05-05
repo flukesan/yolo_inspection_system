@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Paper, Stack, Group, Badge, Text, Button, Alert, ActionIcon, Table, Drawer } from '@mantine/core';
-import { IconCamera, IconRefresh, IconArrowLeft, IconList } from '@tabler/icons-react';
+import { IconCamera, IconRefresh, IconArrowLeft, IconList, IconMaximize, IconMinimize } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
 import { snapAndInspect } from '../api/client';
 
@@ -20,8 +20,31 @@ export default function OperationPage() {
   const [wsConnected, setWsConnected] = useState(false);
   const [frameSrc, setFrameSrc] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+
+  // ── Fullscreen API ────────────────────────────────────────────
+  const enterFullscreen = async () => {
+    try {
+      await document.documentElement.requestFullscreen();
+    } catch {}
+  };
+  const exitFullscreen = async () => {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+    } catch {}
+  };
+  const toggleFullscreen = () => (isFullscreen ? exitFullscreen() : enterFullscreen());
+
+  useEffect(() => {
+    const onFsChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onFsChange);
+    // Auto-enter fullscreen when page mounts
+    enterFullscreen();
+    return () => document.removeEventListener('fullscreenchange', onFsChange);
+  }, []);
 
   // WebSocket live camera
   useEffect(() => {
@@ -124,7 +147,7 @@ export default function OperationPage() {
         zIndex: 10,
       }}>
         <Group gap="xs">
-          <ActionIcon variant="subtle" color="gray" onClick={() => navigate('/dashboard')}>
+          <ActionIcon variant="subtle" color="gray" onClick={() => { exitFullscreen(); setTimeout(() => navigate('/dashboard'), 100); }}>
             <IconArrowLeft size={20} />
           </ActionIcon>
           <Badge size="sm" color={wsConnected ? 'green' : 'red'} variant="filled">
@@ -132,6 +155,9 @@ export default function OperationPage() {
           </Badge>
         </Group>
         <Group gap="xs">
+          <ActionIcon variant="subtle" color="gray" onClick={toggleFullscreen} title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}>
+            {isFullscreen ? <IconMinimize size={20} /> : <IconMaximize size={20} />}
+          </ActionIcon>
           <ActionIcon variant="subtle" color="gray" onClick={() => setHistoryOpen(true)} title="History">
             <IconList size={20} />
           </ActionIcon>
