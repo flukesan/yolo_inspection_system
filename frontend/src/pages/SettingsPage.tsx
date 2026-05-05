@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Paper, Title, Tabs, TextInput, NumberInput, Button, Select, Stack, Text, Alert, Group, Badge, Image, Grid } from '@mantine/core';
 import { IconCheck, IconAlertCircle, IconRefresh, IconCamera } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
-import { isEngineer, getUser, getCameraConfig, updateCameraConfig, restartCamera, getCameraSnapshot, testPlcConnection, getPlcStatus, getPlcData } from '../api/client';
+import { isEngineer, getUser, getCameraConfig, updateCameraConfig, restartCamera, getCameraSnapshot, testPlcConnection, getPlcStatus } from '../api/client';
 
 const SOURCE_TYPES = [
   { value: 'usb', label: 'USB / Notebook Camera' },
