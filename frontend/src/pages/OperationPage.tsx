@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Paper, Stack, Group, Badge, Text, Button, Alert, ActionIcon, Table, Drawer } from '@mantine/core';
+import { Paper, Stack, Group, Badge, Text, Button, Alert, ActionIcon, Table, Drawer, SegmentedControl } from '@mantine/core';
 import { IconCamera, IconRefresh, IconArrowLeft, IconList, IconMaximize, IconMinimize } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
 import { snapAndInspect } from '../api/client';
@@ -21,7 +21,9 @@ export default function OperationPage() {
   const [frameSrc, setFrameSrc] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [mode, setMode] = useState<'snap' | 'realtime'>('snap');
   const wsRef = useRef<WebSocket | null>(null);
+  const realtimeRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const navigate = useNavigate();
 
   // ── Fullscreen API ────────────────────────────────────────────
@@ -70,6 +72,32 @@ export default function OperationPage() {
 
     return () => { ws.close(); wsRef.current = null; };
   }, []);
+
+  // ── Realtime inspection polling ──────────────────────────────
+  useEffect(() => {
+    if (mode === 'realtime' && wsConnected) {
+      const runInspect = async () => {
+        try {
+          const res = await snapAndInspect();
+          const result: SnapResult = res.data;
+          setLastResult(result);
+          setHistory((prev) => [result, ...prev].slice(0, 50));
+          setError('');
+        } catch (e: any) {
+          setError(e.response?.data?.detail || 'Inspection error');
+        }
+      };
+      realtimeRef.current = setInterval(runInspect, 800);
+    } else {
+      if (realtimeRef.current) {
+        clearInterval(realtimeRef.current);
+        realtimeRef.current = null;
+      }
+    }
+    return () => {
+      if (realtimeRef.current) clearInterval(realtimeRef.current);
+    };
+  }, [mode, wsConnected]);
 
   const handleSnap = async () => {
     setSnapping(true);
@@ -209,23 +237,41 @@ export default function OperationPage() {
         </Paper>
       )}
 
-      {/* ── Snap Button (bottom center) ─────────────────────────── */}
+      {/* ── Bottom Controls ────────────────────────────────────── */}
       <div style={{
         position: 'absolute', bottom: 24, left: '50%',
         transform: 'translateX(-50%)',
         zIndex: 10,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
       }}>
-        <Button
-          size="xl"
+        <SegmentedControl
+          value={mode}
+          onChange={(v) => setMode(v as 'snap' | 'realtime')}
+          data={[
+            { value: 'snap', label: '📷 Snap' },
+            { value: 'realtime', label: '🔄 Real-Time' },
+          ]}
           color="orange"
-          leftSection={<IconCamera size={28} />}
-          onClick={handleSnap}
-          loading={snapping}
-          disabled={!wsConnected}
-          style={{ minWidth: 240, height: 60, fontSize: 20, fontWeight: 700, borderRadius: 30 }}
-        >
-          {snapping ? 'INSPECTING...' : 'SNAP & INSPECT'}
-        </Button>
+          size="md"
+        />
+        {mode === 'snap' && (
+          <Button
+            size="xl"
+            color="orange"
+            leftSection={<IconCamera size={28} />}
+            onClick={handleSnap}
+            loading={snapping}
+            disabled={!wsConnected}
+            style={{ minWidth: 240, height: 60, fontSize: 20, fontWeight: 700, borderRadius: 30 }}
+          >
+            {snapping ? 'INSPECTING...' : 'SNAP & INSPECT'}
+          </Button>
+        )}
+        {mode === 'realtime' && (
+          <Badge size="lg" color={wsConnected ? 'green' : 'red'} variant="dot">
+            {wsConnected ? 'Real-Time Inspection Active' : 'Camera Offline'}
+          </Badge>
+        )}
       </div>
 
       {/* ── History Drawer ──────────────────────────────────────── */}
